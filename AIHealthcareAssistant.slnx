@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AIHealthcareAssistant.API/AIHealthcareAssistant.API.csproj" />
+    <Project Path="src/AIHealthcareAssistant.Application/AIHealthcareAssistant.Application.csproj" />
+    <Project Path="src/AIHealthcareAssistant.Domain/AIHealthcareAssistant.Domain.csproj" />
+    <Project Path="src/AIHealthcareAssistant.Infrastructure/AIHealthcareAssistant.Infrastructure.csproj" />
+  </Folder>
+</Solution>
