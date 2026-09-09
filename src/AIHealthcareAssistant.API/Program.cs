@@ -17,6 +17,7 @@ app.UseMiddleware<AIHealthcareAssistant.API.Middleware.ExceptionHandlingMiddlewa
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
