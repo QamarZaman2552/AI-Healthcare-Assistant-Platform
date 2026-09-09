@@ -1,5 +1,8 @@
 using AIHealthcareAssistant.Application.Common.Interfaces;
+using AIHealthcareAssistant.Application.Features.Appointments;
+using AIHealthcareAssistant.Application.Features.Availability;
 using AIHealthcareAssistant.Infrastructure.Persistence;
+using AIHealthcareAssistant.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +21,9 @@ public static class DependencyInjection
 
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
+
+        services.AddScoped<IAvailabilityService, AvailabilityService>();
+        services.AddScoped<IAppointmentService, AppointmentService>();
 
         return services;
     }
