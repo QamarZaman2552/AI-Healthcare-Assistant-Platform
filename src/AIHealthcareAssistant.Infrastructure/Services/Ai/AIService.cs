@@ -126,12 +126,6 @@ public sealed class AIService : IAIService
             });
         }
 
-        providerMessages.Add(new AIProviderMessage
-        {
-            Role = "user",
-            Content = request.Message
-        });
-
         var providerRequest = new AIProviderRequest
         {
             Model = _settings.Model,
