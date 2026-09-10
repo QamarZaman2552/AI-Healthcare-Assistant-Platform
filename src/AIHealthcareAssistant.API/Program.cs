@@ -14,11 +14,15 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<AIHealthcareAssistant.API.Middleware.ExceptionHandlingMiddleware>();
+
 app.UseSwagger();
 app.UseSwaggerUI();
+
 app.UseHttpsRedirection();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

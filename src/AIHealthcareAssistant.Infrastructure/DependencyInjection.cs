@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using AIHealthcareAssistant.Infrastructure.Services.Ai;
+using Microsoft.Extensions.Options;
 
 namespace AIHealthcareAssistant.Infrastructure;
 
@@ -52,7 +54,28 @@ public static class DependencyInjection
             };
         });
 
+
+
         services.AddAuthorization();
+
+        services.Configure<AISettings>(
+    configuration.GetSection("AISettings"));
+
+        services.AddHttpClient<IAIService, AIService>(
+            (provider, client) =>
+            {
+                var settings =
+                    provider
+                        .GetRequiredService<IOptions<AISettings>>()
+                        .Value;
+
+                client.BaseAddress =
+                    new Uri(settings.BaseUrl);
+
+                client.Timeout =
+                    TimeSpan.FromSeconds(
+                        settings.TimeoutSeconds);
+            });
 
         return services;
     }
