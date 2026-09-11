@@ -5,4 +5,7 @@
     <Project Path="src/AIHealthcareAssistant.Domain/AIHealthcareAssistant.Domain.csproj" />
     <Project Path="src/AIHealthcareAssistant.Infrastructure/AIHealthcareAssistant.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AIHealthcareAssistant.Tests/AIHealthcareAssistant.Tests.csproj" />
+  </Folder>
 </Solution>
