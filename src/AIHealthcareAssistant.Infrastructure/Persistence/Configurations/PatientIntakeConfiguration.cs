@@ -18,11 +18,30 @@ public class PatientIntakeConfiguration : IEntityTypeConfiguration<PatientIntake
         builder.Property(x => x.BloodPressure).HasMaxLength(16);
         builder.Property(x => x.CurrentMedications).HasMaxLength(1000);
         builder.Property(x => x.AdditionalNotes).HasMaxLength(1000);
+        builder.Property(x => x.AISummary).HasMaxLength(4000);
+        builder.Property(x => x.Status).HasConversion<int>().IsRequired();
         builder.Property(x => x.SubmittedAt).IsRequired();
         builder.Property(x => x.CreatedBy).HasMaxLength(256);
         builder.Property(x => x.UpdatedBy).HasMaxLength(256);
 
-        builder.HasIndex(x => x.AppointmentId).IsUnique();
+        builder.HasIndex(x => x.AppointmentId)
+            .IsUnique()
+            .HasFilter("[AppointmentId] IS NOT NULL");
+
+        builder.HasIndex(x => x.AIConversationId)
+            .IsUnique()
+            .HasFilter("[AIConversationId] IS NOT NULL");
+
         builder.HasIndex(x => x.PatientId);
+
+        builder.HasOne(x => x.AIConversation)
+            .WithMany()
+            .HasForeignKey(x => x.AIConversationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.RecommendedSpecialty)
+            .WithMany()
+            .HasForeignKey(x => x.RecommendedSpecialtyId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

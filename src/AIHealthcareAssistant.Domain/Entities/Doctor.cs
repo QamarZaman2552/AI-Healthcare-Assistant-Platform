@@ -17,6 +17,7 @@ public class Doctor : AuditableEntity
     public decimal ConsultationFee { get; set; }
     public string? ClinicName { get; set; }
     public string? ClinicAddress { get; set; }
+    public bool IsActive { get; set; } = true;
     public bool IsVerified { get; set; }
 
     public ICollection<DoctorSpecialty> DoctorSpecialties { get; set; } = new List<DoctorSpecialty>();
