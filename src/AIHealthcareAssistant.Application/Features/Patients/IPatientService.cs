@@ -1,0 +1,10 @@
+namespace AIHealthcareAssistant.Application.Features.Patients;
+
+public interface IPatientService
+{
+    Task<PatientResponse?> GetByIdAsync(Guid id);
+    Task<PatientResponse?> GetByUserIdAsync(Guid userId);
+    Task<PatientProfileResponse?> GetProfileAsync(Guid patientId);
+    Task<PatientProfileResponse> CreateProfileAsync(Guid patientId, PatientProfileRequest request);
+    Task<PatientProfileResponse> UpdateProfileAsync(Guid patientId, PatientProfileRequest request);
+}

@@ -31,7 +31,7 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
         builder.HasOne(x => x.Intake)
             .WithOne(x => x.Appointment)
             .HasForeignKey<PatientIntake>(x => x.AppointmentId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(x => x.Conversation)
             .WithOne(x => x.Appointment)
