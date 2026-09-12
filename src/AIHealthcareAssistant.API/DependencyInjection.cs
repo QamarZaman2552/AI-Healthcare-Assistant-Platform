@@ -2,6 +2,7 @@ using System.Reflection;
 using AIHealthcareAssistant.API.Middleware;
 using AIHealthcareAssistant.Application.Common.Response;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi;
 
 namespace AIHealthcareAssistant.API;
 
@@ -50,6 +51,16 @@ public static class DependencyInjection
             {
                 options.IncludeXmlComments(xmlPath);
             }
+
+            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Name = "Authorization",
+                Type = SecuritySchemeType.Http,
+                Scheme = "Bearer",
+                BearerFormat = "JWT",
+                In = ParameterLocation.Header,
+                Description = "Enter your JWT token"
+            });
         });
 
         return services;
