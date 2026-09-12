@@ -8,21 +8,13 @@ builder.Services.AddApi();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseDeveloperExceptionPage();
-}
-
-app.UseMiddleware<AIHealthcareAssistant.API.Middleware.ExceptionHandlingMiddleware>();
-
-app.UseSwagger();
-app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
+
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseApi();
 app.MapControllers();
 
 app.Run();

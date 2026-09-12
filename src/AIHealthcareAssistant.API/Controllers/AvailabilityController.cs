@@ -1,11 +1,13 @@
-﻿using AIHealthcareAssistant.Application.Features.Availability;
+﻿
+using AIHealthcareAssistant.Application.Common.Response;
+using AIHealthcareAssistant.Application.Features.Availability;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
-[Route("api/[controller]")]
 [ApiController]
+[Route("api/[controller]")]
 [Authorize]
 public class AvailabilityController : ControllerBase
 {
@@ -16,59 +18,141 @@ public class AvailabilityController : ControllerBase
         _availabilityService = availabilityService;
     }
 
+    /// <summary>
+    /// Gets all availability records for a doctor.
+    /// </summary>
     [HttpGet("doctor/{doctorId:guid}")]
-    public async Task<ActionResult<List<AvailabilityResponse>>> GetByDoctor(Guid doctorId)
+    [ProducesResponseType(typeof(ApiResponse<List<AvailabilityResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<List<AvailabilityResponse>>>> GetByDoctor(Guid doctorId)
     {
         var result = await _availabilityService.GetByDoctorAsync(doctorId);
-        return Ok(result);
+
+        return Ok(ApiResponse<List<AvailabilityResponse>>.Ok(
+            result,
+            "Doctor availability retrieved successfully."));
     }
 
+    /// <summary>
+    /// Gets doctor availability for a specific day.
+    /// </summary>
     [HttpGet("doctor/{doctorId:guid}/day/{dayOfWeek}")]
-    public async Task<ActionResult<List<AvailabilityResponse>>> GetByDoctorAndDay(
-        Guid doctorId, DayOfWeek dayOfWeek)
+    [ProducesResponseType(typeof(ApiResponse<List<AvailabilityResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<List<AvailabilityResponse>>>> GetByDoctorAndDay(
+        Guid doctorId,
+        DayOfWeek dayOfWeek)
     {
-        var result = await _availabilityService.GetByDoctorAndDayAsync(doctorId, dayOfWeek);
-        return Ok(result);
+        var result = await _availabilityService.GetByDoctorAndDayAsync(
+            doctorId,
+            dayOfWeek);
+
+        return Ok(ApiResponse<List<AvailabilityResponse>>.Ok(
+            result,
+            "Doctor availability for the selected day retrieved successfully."));
     }
 
+    /// <summary>
+    /// Gets available time slots for a doctor on a specific date.
+    /// </summary>
     [HttpGet("doctor/{doctorId:guid}/slots/{date}")]
-    public async Task<ActionResult<List<TimeSlotResponse>>> GetAvailableSlots(
-        Guid doctorId, DateOnly date)
+    [ProducesResponseType(typeof(ApiResponse<List<TimeSlotResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<List<TimeSlotResponse>>>> GetAvailableSlots(
+        Guid doctorId,
+        DateOnly date)
     {
-        var result = await _availabilityService.GetAvailableSlotsAsync(doctorId, date);
-        return Ok(result);
+        var result = await _availabilityService.GetAvailableSlotsAsync(
+            doctorId,
+            date);
+
+        return Ok(ApiResponse<List<TimeSlotResponse>>.Ok(
+            result,
+            "Available time slots retrieved successfully."));
     }
 
+    /// <summary>
+    /// Gets an availability record by ID.
+    /// </summary>
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<AvailabilityResponse>> GetById(Guid id)
+    [ProducesResponseType(typeof(ApiResponse<AvailabilityResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<AvailabilityResponse>>> GetById(Guid id)
     {
         var result = await _availabilityService.GetByIdAsync(id);
-        if (result == null) return NotFound();
-        return Ok(result);
+
+        if (result == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Availability record was not found."));
+
+        return Ok(ApiResponse<AvailabilityResponse>.Ok(
+            result,
+            "Availability retrieved successfully."));
     }
 
+    /// <summary>
+    /// Creates a new doctor availability record.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Doctor,Admin")]
-    public async Task<ActionResult<AvailabilityResponse>> Create(CreateAvailabilityRequest request)
+    [ProducesResponseType(typeof(ApiResponse<AvailabilityResponse>), 201)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 409)]
+    public async Task<ActionResult<ApiResponse<AvailabilityResponse>>> Create(
+        [FromBody] CreateAvailabilityRequest request)
     {
         var result = await _availabilityService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+
+        var response = ApiResponse<AvailabilityResponse>.Ok(
+            result,
+            "Availability created successfully.");
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = result.Id },
+            response);
     }
 
+    /// <summary>
+    /// Updates an existing availability record.
+    /// </summary>
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Doctor,Admin")]
-    public async Task<ActionResult<AvailabilityResponse>> Update(
-        Guid id, UpdateAvailabilityRequest request)
+    [ProducesResponseType(typeof(ApiResponse<AvailabilityResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 409)]
+    public async Task<ActionResult<ApiResponse<AvailabilityResponse>>> Update(
+        Guid id,
+        [FromBody] UpdateAvailabilityRequest request)
     {
         var result = await _availabilityService.UpdateAsync(id, request);
-        return Ok(result);
+
+        return Ok(ApiResponse<AvailabilityResponse>.Ok(
+            result,
+            "Availability updated successfully."));
     }
 
+    /// <summary>
+    /// Deletes an availability record.
+    /// </summary>
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Doctor,Admin")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     public async Task<IActionResult> Delete(Guid id)
     {
         await _availabilityService.DeleteAsync(id);
+
         return NoContent();
     }
 }
+

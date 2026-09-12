@@ -18,65 +18,80 @@ public class AuthService : IAuthService
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
 
-    public AuthService(AppDbContext context, IConfiguration configuration)
+    public AuthService(
+        AppDbContext context,
+        IConfiguration configuration)
     {
         _context = context;
         _configuration = configuration;
     }
 
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    public async Task<AuthResponse> RegisterAsync(
+        RegisterRequest request)
     {
-        if (await _context.Users.AnyAsync(u => u.Email == request.Email))
-            throw new InvalidOperationException("Email already exists");
+        var email = request.Email.Trim().ToLowerInvariant();
+
+        if (await _context.Users.AnyAsync(u => u.Email == email))
+        {
+            throw new InvalidOperationException(
+                "An account with this email already exists.");
+        }
 
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Email = request.Email,
+            Email = email,
             PasswordHash = HashPassword(request.Password),
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            PhoneNumber = request.PhoneNumber,
-            Role = request.Role,
+            FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(),
+            PhoneNumber = request.PhoneNumber?.Trim(),
+
+            // Public registration always creates a Patient.
+            Role = UserRole.Patient,
+
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
         _context.Users.Add(user);
 
-        if (request.Role == UserRole.Patient)
+        _context.Patients.Add(new Patient
         {
-            _context.Patients.Add(new Patient
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-        else if (request.Role == UserRole.Doctor)
-        {
-            _context.Doctors.Add(new Doctor
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                LicenseNumber = string.Empty,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            CreatedAt = DateTime.UtcNow
+        });
 
         await _context.SaveChangesAsync();
 
         return GenerateToken(user);
     }
 
-    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    public async Task<AuthResponse> LoginAsync(
+        LoginRequest request)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var email = request.Email.Trim().ToLowerInvariant();
 
-        if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
-            throw new UnauthorizedAccessException("Invalid email or password");
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user == null ||
+            !VerifyPassword(
+                request.Password,
+                user.PasswordHash))
+        {
+            throw new UnauthorizedAccessException(
+                "Invalid email or password.");
+        }
+
+        if (!user.IsActive)
+        {
+            throw new UnauthorizedAccessException(
+                "This account is inactive.");
+        }
 
         user.LastLoginAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
 
         return GenerateToken(user);
@@ -84,16 +99,33 @@ public class AuthService : IAuthService
 
     private AuthResponse GenerateToken(User user)
     {
-        var jwtSettings = _configuration.GetSection("JwtSettings").Get<JwtSettings>()!;
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key));
-        var expiration = DateTime.UtcNow.AddMinutes(jwtSettings.ExpirationInMinutes);
+        var jwtSettings = _configuration
+            .GetSection("JwtSettings")
+            .Get<JwtSettings>()!;
+
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSettings.Key));
+
+        var expiration = DateTime.UtcNow.AddMinutes(
+            jwtSettings.ExpirationInMinutes);
 
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
-            new(ClaimTypes.Role, user.Role.ToString())
+            new(
+                ClaimTypes.NameIdentifier,
+                user.Id.ToString()),
+
+            new(
+                ClaimTypes.Email,
+                user.Email),
+
+            new(
+                ClaimTypes.Name,
+                $"{user.FirstName} {user.LastName}"),
+
+            new(
+                ClaimTypes.Role,
+                user.Role.ToString())
         };
 
         var token = new JwtSecurityToken(
@@ -101,14 +133,24 @@ public class AuthService : IAuthService
             audience: jwtSettings.Audience,
             claims: claims,
             expires: expiration,
-            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+            signingCredentials:
+                new SigningCredentials(
+                    key,
+                    SecurityAlgorithms.HmacSha256)
+        );
 
         return new AuthResponse
         {
-            Token = new JwtSecurityTokenHandler().WriteToken(token),
+            Token = new JwtSecurityTokenHandler()
+                .WriteToken(token),
+
             Email = user.Email,
-            FullName = $"{user.FirstName} {user.LastName}",
+
+            FullName =
+                $"{user.FirstName} {user.LastName}",
+
             Role = user.Role.ToString(),
+
             Expiration = expiration
         };
     }
@@ -116,11 +158,16 @@ public class AuthService : IAuthService
     private static string HashPassword(string password)
     {
         using var sha256 = SHA256.Create();
-        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+
+        var bytes = sha256.ComputeHash(
+            Encoding.UTF8.GetBytes(password));
+
         return Convert.ToBase64String(bytes);
     }
 
-    private static bool VerifyPassword(string password, string hash)
+    private static bool VerifyPassword(
+        string password,
+        string hash)
     {
         return HashPassword(password) == hash;
     }

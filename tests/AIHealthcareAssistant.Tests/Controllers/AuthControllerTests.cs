@@ -26,7 +26,7 @@ public class AuthControllerTests
             Password = "Test@1234",
             FirstName = "John",
             LastName = "Doe",
-            Role = UserRole.Patient
+          
         };
 
         var response = new AuthResponse

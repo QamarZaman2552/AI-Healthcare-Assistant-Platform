@@ -9,13 +9,14 @@ using AIHealthcareAssistant.Application.Features.Patients;
 using AIHealthcareAssistant.Application.Features.Specialties;
 using AIHealthcareAssistant.Infrastructure.Persistence;
 using AIHealthcareAssistant.Infrastructure.Services;
+using AIHealthcareAssistant.Infrastructure.Services.Ai;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
-using AIHealthcareAssistant.Infrastructure.Services.Ai;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
 
 namespace AIHealthcareAssistant.Infrastructure;
 
@@ -60,9 +61,9 @@ public static class DependencyInjection
                 ValidAudience = jwtSettings.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(key)
             };
+
+           
         });
-
-
 
         services.AddAuthorization();
 

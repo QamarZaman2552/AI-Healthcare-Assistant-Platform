@@ -1,11 +1,13 @@
+
+using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Specialties;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
-[Route("api/[controller]")]
 [ApiController]
+[Route("api/[controller]")]
 public class SpecialitiesController : ControllerBase
 {
     private readonly ISpecialtyService _specialtyService;
@@ -15,34 +17,84 @@ public class SpecialitiesController : ControllerBase
         _specialtyService = specialtyService;
     }
 
+    /// <summary>
+    /// Gets all medical specialties.
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<SpecialtyResponse>>> GetAll()
+    [ProducesResponseType(typeof(ApiResponse<List<SpecialtyResponse>>), 200)]
+    public async Task<ActionResult<ApiResponse<List<SpecialtyResponse>>>> GetAll()
     {
         var result = await _specialtyService.GetAllAsync();
-        return Ok(result);
+
+        return Ok(ApiResponse<List<SpecialtyResponse>>.Ok(
+            result,
+            "Specialties retrieved successfully."));
     }
 
+    /// <summary>
+    /// Gets a specialty by ID.
+    /// </summary>
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<SpecialtyResponse>> GetById(Guid id)
+    [ProducesResponseType(typeof(ApiResponse<SpecialtyResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    public async Task<ActionResult<ApiResponse<SpecialtyResponse>>> GetById(Guid id)
     {
         var result = await _specialtyService.GetByIdAsync(id);
-        if (result == null) return NotFound();
-        return Ok(result);
+
+        if (result == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Specialty was not found."));
+
+        return Ok(ApiResponse<SpecialtyResponse>.Ok(
+            result,
+            "Specialty retrieved successfully."));
     }
 
+    /// <summary>
+    /// Creates a new medical specialty.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<SpecialtyResponse>> Create(CreateSpecialtyRequest request)
+    [ProducesResponseType(typeof(ApiResponse<SpecialtyResponse>), 201)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 409)]
+    public async Task<ActionResult<ApiResponse<SpecialtyResponse>>> Create(
+        [FromBody] CreateSpecialtyRequest request)
     {
         var result = await _specialtyService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+
+        var response = ApiResponse<SpecialtyResponse>.Ok(
+            result,
+            "Specialty created successfully.");
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = result.Id },
+            response);
     }
 
+    /// <summary>
+    /// Updates an existing medical specialty.
+    /// </summary>
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<SpecialtyResponse>> Update(Guid id, UpdateSpecialtyRequest request)
+    [ProducesResponseType(typeof(ApiResponse<SpecialtyResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 409)]
+    public async Task<ActionResult<ApiResponse<SpecialtyResponse>>> Update(
+        Guid id,
+        [FromBody] UpdateSpecialtyRequest request)
     {
         var result = await _specialtyService.UpdateAsync(id, request);
-        return Ok(result);
+
+        return Ok(ApiResponse<SpecialtyResponse>.Ok(
+            result,
+            "Specialty updated successfully."));
     }
 }
+
