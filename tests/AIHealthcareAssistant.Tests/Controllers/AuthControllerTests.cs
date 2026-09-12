@@ -1,6 +1,6 @@
 using AIHealthcareAssistant.API.Controllers;
+using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Auth;
-using AIHealthcareAssistant.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -25,8 +25,7 @@ public class AuthControllerTests
             Email = "test@test.com",
             Password = "Test@1234",
             FirstName = "John",
-            LastName = "Doe",
-            Role = UserRole.Patient
+            LastName = "Doe"
         };
 
         var response = new AuthResponse
@@ -45,9 +44,9 @@ public class AuthControllerTests
         var result = await _controller.Register(request);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var authResponse = Assert.IsType<AuthResponse>(okResult.Value);
-        Assert.Equal("jwt-token", authResponse.Token);
-        Assert.Equal("test@test.com", authResponse.Email);
+        var authResponse = Assert.IsType<ApiResponse<AuthResponse>>(okResult.Value);
+        Assert.Equal("jwt-token", authResponse.Data.Token);
+        Assert.Equal("test@test.com", authResponse.Data.Email);
     }
 
     [Fact]
@@ -96,8 +95,8 @@ public class AuthControllerTests
         var result = await _controller.Login(request);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var authResponse = Assert.IsType<AuthResponse>(okResult.Value);
-        Assert.Equal("jwt-token", authResponse.Token);
+        var authResponse = Assert.IsType<ApiResponse<AuthResponse>>(okResult.Value);
+        Assert.Equal("jwt-token", authResponse.Data.Token);
     }
 
     [Fact]

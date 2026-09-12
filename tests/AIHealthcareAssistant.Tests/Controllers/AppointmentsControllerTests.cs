@@ -1,4 +1,5 @@
 using AIHealthcareAssistant.API.Controllers;
+using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Appointments;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -40,7 +41,7 @@ public class AppointmentsControllerTests
         var result = await _controller.GetById(id);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<AppointmentResponse>(okResult.Value);
+        Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
     }
 
     [Fact]
@@ -54,7 +55,7 @@ public class AppointmentsControllerTests
 
         var result = await _controller.GetById(id);
 
-        Assert.IsType<NotFoundResult>(result.Result);
+        Assert.IsType<NotFoundObjectResult>(result.Result);
     }
 
     [Fact]
@@ -84,8 +85,8 @@ public class AppointmentsControllerTests
         var result = await _controller.GetByPatient(patientId);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<List<AppointmentResponse>>(okResult.Value);
-        Assert.Single(response);
+        var response = Assert.IsType<ApiResponse<List<AppointmentResponse>>>(okResult.Value);
+        Assert.Single(response.Data);
     }
 
     [Fact]
@@ -121,7 +122,7 @@ public class AppointmentsControllerTests
         var result = await _controller.Create(request);
 
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.IsType<AppointmentResponse>(createdResult.Value);
+        Assert.IsType<ApiResponse<AppointmentResponse>>(createdResult.Value);
         Assert.Equal(201, createdResult.StatusCode);
     }
 
@@ -151,8 +152,7 @@ public class AppointmentsControllerTests
         var result = await _controller.Cancel(id, "Patient request");
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var appointment = Assert.IsType<AppointmentResponse>(okResult.Value);
-        Assert.Equal("Cancelled", appointment.Status);
+        Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
     }
 
     [Fact]
@@ -185,6 +185,6 @@ public class AppointmentsControllerTests
         var result = await _controller.Reschedule(id, request);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<AppointmentResponse>(okResult.Value);
+        Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
     }
 }

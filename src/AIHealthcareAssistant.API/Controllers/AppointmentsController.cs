@@ -1,4 +1,6 @@
-﻿using AIHealthcareAssistant.Application.Features.Appointments;
+﻿
+using AIHealthcareAssistant.Application.Common.Response;
+using AIHealthcareAssistant.Application.Features.Appointments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,57 +18,153 @@ public class AppointmentsController : ControllerBase
         _appointmentService = appointmentService;
     }
 
+    /// <summary>
+    /// Gets an appointment by its unique identifier.
+    /// </summary>
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<AppointmentResponse>> GetById(Guid id)
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<AppointmentResponse>>> GetById(Guid id)
     {
         var result = await _appointmentService.GetByIdAsync(id);
-        if (result == null) return NotFound();
-        return Ok(result);
+
+        if (result == null)
+            return NotFound(
+                ApiErrorResponse.Error("Appointment was not found."));
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Ok(
+                result,
+                "Appointment retrieved successfully."));
     }
 
+    /// <summary>
+    /// Gets all appointments for a patient.
+    /// </summary>
     [HttpGet("patient/{patientId:guid}")]
-    public async Task<ActionResult<List<AppointmentResponse>>> GetByPatient(Guid patientId)
+    [ProducesResponseType(typeof(ApiResponse<List<AppointmentResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<List<AppointmentResponse>>>> GetByPatient(
+        Guid patientId)
     {
         var result = await _appointmentService.GetByPatientAsync(patientId);
-        return Ok(result);
+
+        return Ok(
+            ApiResponse<List<AppointmentResponse>>.Ok(
+                result,
+                "Patient appointments retrieved successfully."));
     }
 
+    /// <summary>
+    /// Gets all appointments for a doctor.
+    /// </summary>
     [HttpGet("doctor/{doctorId:guid}")]
-    public async Task<ActionResult<List<AppointmentResponse>>> GetByDoctor(Guid doctorId)
+    [ProducesResponseType(typeof(ApiResponse<List<AppointmentResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<List<AppointmentResponse>>>> GetByDoctor(
+        Guid doctorId)
     {
         var result = await _appointmentService.GetByDoctorAsync(doctorId);
-        return Ok(result);
+
+        return Ok(
+            ApiResponse<List<AppointmentResponse>>.Ok(
+                result,
+                "Doctor appointments retrieved successfully."));
     }
 
+    /// <summary>
+    /// Creates a new appointment.
+    /// </summary>
     [HttpPost]
-    public async Task<ActionResult<AppointmentResponse>> Create(CreateAppointmentRequest request)
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<AppointmentResponse>>> Create(
+        [FromBody] CreateAppointmentRequest request)
     {
         var result = await _appointmentService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+
+        var response = ApiResponse<AppointmentResponse>.Ok(
+            result,
+            "Appointment created successfully.");
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = result.Id },
+            response);
     }
 
+    /// <summary>
+    /// Cancels an existing appointment.
+    /// </summary>
     [HttpPut("{id:guid}/cancel")]
-    public async Task<ActionResult<AppointmentResponse>> Cancel(
-        Guid id, [FromQuery] string? cancellationReason)
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<AppointmentResponse>>> Cancel(
+        Guid id,
+        [FromQuery] string? cancellationReason)
     {
-        var result = await _appointmentService.CancelAsync(id, cancellationReason);
-        return Ok(result);
+        var result = await _appointmentService.CancelAsync(
+            id,
+            cancellationReason);
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Ok(
+                result,
+                "Appointment cancelled successfully."));
     }
 
+    /// <summary>
+    /// Reschedules an existing appointment.
+    /// </summary>
     [HttpPut("{id:guid}/reschedule")]
-    public async Task<ActionResult<AppointmentResponse>> Reschedule(
-        Guid id, RescheduleAppointmentRequest request)
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<AppointmentResponse>>> Reschedule(
+        Guid id,
+        [FromBody] RescheduleAppointmentRequest request)
     {
-        var result = await _appointmentService.RescheduleAsync(id, request);
-        return Ok(result);
+        var result = await _appointmentService.RescheduleAsync(
+            id,
+            request);
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Ok(
+                result,
+                "Appointment rescheduled successfully."));
     }
 
+    /// <summary>
+    /// Updates the status of an appointment.
+    /// </summary>
     [HttpPut("{id:guid}/status")]
     [Authorize(Roles = "Doctor,Admin")]
-    public async Task<ActionResult<AppointmentResponse>> UpdateStatus(
-        Guid id, [FromQuery] string status)
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ApiResponse<AppointmentResponse>>> UpdateStatus(
+        Guid id,
+        [FromQuery] string status)
     {
-        var result = await _appointmentService.UpdateStatusAsync(id, status);
-        return Ok(result);
+        var result = await _appointmentService.UpdateStatusAsync(
+            id,
+            status);
+
+        return Ok(
+            ApiResponse<AppointmentResponse>.Ok(
+                result,
+                "Appointment status updated successfully."));
     }
 }
+

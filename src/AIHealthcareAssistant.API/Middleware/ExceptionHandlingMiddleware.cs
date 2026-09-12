@@ -1,5 +1,7 @@
 using System.Net;
-using System.Text.Json;
+using AIHealthcareAssistant.Application.Common.Response;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace AIHealthcareAssistant.API.Middleware;
 
@@ -7,8 +9,9 @@ public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
-
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+public ExceptionHandlingMiddleware(
+    RequestDelegate next,
+    ILogger<ExceptionHandlingMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -20,33 +23,55 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            _logger.LogError(ex, "An unhandled exception occurred");
-            await HandleExceptionAsync(context, ex);
+            _logger.LogError(
+                exception,
+                "Unhandled exception occurred while processing {Method} {Path}",
+                context.Request.Method,
+                context.Request.Path);
+
+            await HandleExceptionAsync(context, exception);
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    public static async Task HandleExceptionAsync(
+        HttpContext context,
+        Exception exception)
     {
         var (statusCode, message) = exception switch
         {
-            ArgumentException ex => (HttpStatusCode.BadRequest, ex.Message),
-            KeyNotFoundException ex => (HttpStatusCode.NotFound, ex.Message),
-            UnauthorizedAccessException ex => (HttpStatusCode.Unauthorized, ex.Message),
-            InvalidOperationException ex => (HttpStatusCode.Conflict, ex.Message),
-            _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred")
+            ArgumentException ex =>
+                (HttpStatusCode.BadRequest, ex.Message),
+
+            KeyNotFoundException ex =>
+                (HttpStatusCode.NotFound, ex.Message),
+
+            UnauthorizedAccessException ex =>
+                (HttpStatusCode.Unauthorized, ex.Message),
+
+            InvalidOperationException ex =>
+                (HttpStatusCode.Conflict, ex.Message),
+
+            TimeoutException =>
+                (HttpStatusCode.RequestTimeout, "The request timed out."),
+
+            HttpRequestException =>
+                (HttpStatusCode.ServiceUnavailable,
+                    "The requested service is currently unavailable."),
+
+            _ =>
+                (HttpStatusCode.InternalServerError,
+                    "An unexpected error occurred.")
         };
 
-        context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
+        context.Response.ContentType = "application/json";
 
-        var response = JsonSerializer.Serialize(new
-        {
-            error = message,
-            statusCode = (int)statusCode
-        });
+        var response = ApiErrorResponse.Error(message);
 
-        await context.Response.WriteAsync(response);
+        await context.Response.WriteAsJsonAsync(response);
     }
+
+
 }

@@ -1,4 +1,5 @@
 using AIHealthcareAssistant.API.Controllers;
+using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Availability;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -42,8 +43,8 @@ public class AvailabilityControllerTests
         var result = await _controller.GetByDoctor(doctorId);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<List<AvailabilityResponse>>(okResult.Value);
-        Assert.Single(response);
+        var response = Assert.IsType<ApiResponse<List<AvailabilityResponse>>>(okResult.Value);
+        Assert.Single(response.Data);
     }
 
     [Fact]
@@ -58,8 +59,8 @@ public class AvailabilityControllerTests
         var result = await _controller.GetByDoctor(doctorId);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<List<AvailabilityResponse>>(okResult.Value);
-        Assert.Empty(response);
+        var response = Assert.IsType<ApiResponse<List<AvailabilityResponse>>>(okResult.Value);
+        Assert.Empty(response.Data);
     }
 
     [Fact]
@@ -85,7 +86,7 @@ public class AvailabilityControllerTests
         var result = await _controller.GetById(id);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<AvailabilityResponse>(okResult.Value);
+        Assert.IsType<ApiResponse<AvailabilityResponse>>(okResult.Value);
     }
 
     [Fact]
@@ -99,7 +100,7 @@ public class AvailabilityControllerTests
 
         var result = await _controller.GetById(id);
 
-        Assert.IsType<NotFoundResult>(result.Result);
+        Assert.IsType<NotFoundObjectResult>(result.Result);
     }
 
     [Fact]
@@ -133,7 +134,7 @@ public class AvailabilityControllerTests
         var result = await _controller.Create(request);
 
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.IsType<AvailabilityResponse>(createdResult.Value);
+        Assert.IsType<ApiResponse<AvailabilityResponse>>(createdResult.Value);
         Assert.Equal(201, createdResult.StatusCode);
     }
 

@@ -22,16 +22,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandling();
-app.UseRouting();
-app.UseSwagger(options =>
-{
-    options.RouteTemplate = "swagger/{documentName}/swagger.json";
-});
-app.UseSwaggerUI(options =>
-{
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "AI Healthcare API v1");
-    options.RoutePrefix = "swagger";
-});
+app.UseApi();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
