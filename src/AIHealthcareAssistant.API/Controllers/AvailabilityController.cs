@@ -1,6 +1,7 @@
 ﻿
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Availability;
+using AIHealthcareAssistant.Application.Features.Doctors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,10 +13,47 @@ namespace AIHealthcareAssistant.API.Controllers;
 public class AvailabilityController : ControllerBase
 {
     private readonly IAvailabilityService _availabilityService;
+    private readonly IDoctorService _doctorService;
 
-    public AvailabilityController(IAvailabilityService availabilityService)
+    public AvailabilityController(
+        IAvailabilityService availabilityService,
+        IDoctorService doctorService)
     {
         _availabilityService = availabilityService;
+        _doctorService = doctorService;
+    }
+
+    /// <summary>
+    /// Searches available doctors for a specialty on a specific date.
+    /// </summary>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(ApiResponse<List<DoctorResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<List<DoctorResponse>>>> SearchAvailableDoctors(
+        [FromQuery] Guid specialtyId,
+        [FromQuery] DateOnly date)
+    {
+        var doctors = await _doctorService.GetDoctorsAsync(new DoctorQuery
+        {
+            SpecialtyId = specialtyId,
+            AvailableOnly = true,
+            Page = 1,
+            PageSize = 50
+        });
+
+        var availableDoctors = new List<DoctorResponse>();
+        foreach (var doctor in doctors.Items)
+        {
+            var slots = await _availabilityService.GetAvailableSlotsAsync(doctor.Id, date);
+            if (slots.Any(s => s.IsAvailable))
+            {
+                availableDoctors.Add(doctor);
+            }
+        }
+
+        return Ok(ApiResponse<List<DoctorResponse>>.Ok(
+            availableDoctors,
+            "Available doctors retrieved successfully."));
     }
 
     /// <summary>

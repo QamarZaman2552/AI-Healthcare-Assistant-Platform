@@ -148,8 +148,8 @@ public class AvailabilityService : IAvailabilityService
                 var slotEnd = current.AddMinutes(availability.SlotDurationMinutes);
 
                 var isBooked = bookedAppointments.Any(a =>
-                    a.ScheduledStart.TimeOfDay >= current.ToTimeSpan()
-                    && a.ScheduledStart.TimeOfDay < slotEnd.ToTimeSpan());
+                    TimeOnly.FromDateTime(a.ScheduledStart) < slotEnd &&
+                    TimeOnly.FromDateTime(a.ScheduledEnd) > current);
 
                 slots.Add(new TimeSlotResponse
                 {

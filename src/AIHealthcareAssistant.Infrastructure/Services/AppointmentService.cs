@@ -47,6 +47,18 @@ public class AppointmentService : IAppointmentService
         if (hasConflict)
             throw new InvalidOperationException("Doctor is not available at this time slot");
 
+        var hasAvailability = await _context.DoctorAvailabilities
+            .AnyAsync(a => a.DoctorId == request.DoctorId
+                && a.DayOfWeek == request.ScheduledStart.DayOfWeek
+                && a.IsActive
+                && a.StartTime <= TimeOnly.FromDateTime(request.ScheduledStart)
+                && a.EndTime >= TimeOnly.FromDateTime(request.ScheduledEnd)
+                && (a.EffectiveFrom == null || a.EffectiveFrom <= DateOnly.FromDateTime(request.ScheduledStart))
+                && (a.EffectiveTo == null || a.EffectiveTo >= DateOnly.FromDateTime(request.ScheduledStart)));
+
+        if (!hasAvailability)
+            throw new InvalidOperationException("Doctor has no availability at this time slot");
+
         var patientHasConflict = await _context.Appointments
             .AnyAsync(a => a.PatientId == request.PatientId
                 && a.Status != null

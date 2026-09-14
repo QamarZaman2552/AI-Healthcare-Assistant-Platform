@@ -1,6 +1,9 @@
 using AIHealthcareAssistant.API.Controllers;
+using AIHealthcareAssistant.Application.Common.Models;
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Availability;
+using AIHealthcareAssistant.Application.Features.Doctors;
+using AIHealthcareAssistant.Application.Features.Specialties;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -9,12 +12,16 @@ namespace AIHealthcareAssistant.Tests.Controllers;
 public class AvailabilityControllerTests
 {
     private readonly Mock<IAvailabilityService> _availabilityServiceMock;
+    private readonly Mock<IDoctorService> _doctorServiceMock;
     private readonly AvailabilityController _controller;
 
     public AvailabilityControllerTests()
     {
         _availabilityServiceMock = new Mock<IAvailabilityService>();
-        _controller = new AvailabilityController(_availabilityServiceMock.Object);
+        _doctorServiceMock = new Mock<IDoctorService>();
+        _controller = new AvailabilityController(
+            _availabilityServiceMock.Object,
+            _doctorServiceMock.Object);
     }
 
     [Fact]
@@ -150,5 +157,53 @@ public class AvailabilityControllerTests
         var result = await _controller.Delete(id);
 
         Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task SearchAvailableDoctors_ReturnsAvailableDoctors()
+    {
+        var specialtyId = Guid.NewGuid();
+        var date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var doctorId = Guid.NewGuid();
+
+        var doctorResponse = new DoctorResponse
+        {
+            Id = doctorId,
+            UserId = Guid.NewGuid(),
+            FullName = "Dr. Smith",
+            Email = "dr.smith@test.com",
+            LicenseNumber = "LIC123",
+            YearsOfExperience = 10,
+            ConsultationFee = 100m,
+            ClinicName = "Test Clinic",
+            ClinicAddress = "123 Main St",
+            IsActive = true,
+            IsVerified = true,
+            Specialties = new List<SpecialtyResponse> { new() { Id = specialtyId, Name = "Cardiology" } },
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _doctorServiceMock
+            .Setup(x => x.GetDoctorsAsync(It.IsAny<DoctorQuery>()))
+            .ReturnsAsync(new PagedResult<DoctorResponse>
+            {
+                Items = new List<DoctorResponse> { doctorResponse },
+                TotalCount = 1,
+                Page = 1,
+                PageSize = 50
+            });
+
+        _availabilityServiceMock
+            .Setup(x => x.GetAvailableSlotsAsync(doctorId, date))
+            .ReturnsAsync(new List<TimeSlotResponse>
+            {
+                new() { StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(9, 30), IsAvailable = true }
+            });
+
+        var result = await _controller.SearchAvailableDoctors(specialtyId, date);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<List<DoctorResponse>>>(okResult.Value);
+        Assert.Single(response.Data);
     }
 }
