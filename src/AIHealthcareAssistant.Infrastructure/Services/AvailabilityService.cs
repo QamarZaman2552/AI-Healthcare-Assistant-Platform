@@ -16,7 +16,10 @@ public class AvailabilityService : IAvailabilityService
 
     public async Task<AvailabilityResponse> CreateAsync(CreateAvailabilityRequest request)
     {
-        var doctor = await _context.Doctors.FindAsync(request.DoctorId);
+        var doctor = await _context.Doctors
+       .Include(d => d.User)
+       .FirstOrDefaultAsync(d => d.Id == request.DoctorId);  
+
         if (doctor == null)
             throw new KeyNotFoundException("Doctor not found");
 
@@ -54,17 +57,21 @@ public class AvailabilityService : IAvailabilityService
         return MapToResponse(availability, doctor);
     }
 
-    public async Task<AvailabilityResponse> UpdateAsync(Guid id, UpdateAvailabilityRequest request)
+    public async Task<AvailabilityResponse> UpdateAsync(
+     Guid id,
+     UpdateAvailabilityRequest request)
     {
         var availability = await _context.DoctorAvailabilities
             .Include(a => a.Doctor)
+            .ThenInclude(d => d.User)
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (availability == null)
             throw new KeyNotFoundException("Availability not found");
 
         if (request.EndTime <= request.StartTime)
-            throw new InvalidOperationException("End time must be after start time");
+            throw new InvalidOperationException(
+                "End time must be after start time");
 
         availability.DayOfWeek = request.DayOfWeek;
         availability.StartTime = request.StartTime;
@@ -76,7 +83,9 @@ public class AvailabilityService : IAvailabilityService
 
         await _context.SaveChangesAsync();
 
-        return MapToResponse(availability, availability.Doctor);
+        return MapToResponse(
+            availability,
+            availability.Doctor);
     }
 
     public async Task<AvailabilityResponse?> GetByIdAsync(Guid id)

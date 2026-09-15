@@ -56,12 +56,20 @@ public static class DependencyInjection
             {
                 Name = "Authorization",
                 Type = SecuritySchemeType.Http,
-                Scheme = "Bearer",
+                Scheme = "bearer",
                 BearerFormat = "JWT",
                 In = ParameterLocation.Header,
                 Description = "Enter your JWT token"
             });
+
+            options.AddSecurityRequirement(document =>
+                new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+                });
         });
+
+
 
         return services;
     }
@@ -69,7 +77,7 @@ public static class DependencyInjection
     public static IApplicationBuilder UseApi(
         this IApplicationBuilder app)
     {
-        app.UseMiddleware<ExceptionHandlingMiddleware>();
+       
 
         app.UseSwagger();
         app.UseSwaggerUI();
