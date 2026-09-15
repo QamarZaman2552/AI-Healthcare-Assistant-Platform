@@ -1,0 +1,349 @@
+{
+  "info": {
+    "_postman_id": "ai-healthcare-assistant",
+    "name": "AI Healthcare Assistant Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"email\":\"test@example.com\",\"password\":\"Password123!\",\"role\":\"Patient\",\"firstName\":\"John\",\"lastName\":\"Doe\",\"phoneNumber\":\"+923001234567\"}"},
+            "url": {"raw": "{{baseUrl}}/api/auth/register", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "auth", "register"]}
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"email\":\"test@example.com\",\"password\":\"Password123!\"}"},
+            "url": {"raw": "{{baseUrl}}/api/auth/login", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "auth", "login"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Availability",
+      "item": [
+        {
+          "name": "Get All by Doctor",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/availability/doctor/{{doctorId}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "availability", "doctor", "{{doctorId}}"]}
+          }
+        },
+        {
+          "name": "Get by Doctor and Day",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/availability/doctor/{{doctorId}}/day/{{dayOfWeek}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "availability", "doctor", "{{doctorId}}", "day", "{{dayOfWeek}}"]}
+          }
+        },
+        {
+          "name": "Get Available Slots",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/availability/doctor/{{doctorId}}/slots/{{date}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "availability", "doctor", "{{doctorId}}", "slots", "{{date}}"]}
+          }
+        },
+        {
+          "name": "Search Available Doctors",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/availability/search?specialtyId={{specialtyId}}&date={{date}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "availability", "search"]}
+          }
+        },
+        {
+          "name": "Create Availability",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"doctorId\":\"{{doctorId}}\",\"dayOfWeek\":\"Monday\",\"startTime\":\"09:00\",\"endTime\":\"17:00\",\"slotDurationMinutes\":30}"},
+            "url": {"raw": "{{baseUrl}}/api/availability", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "availability"]}
+          }
+        },
+        {
+          "name": "Delete Availability",
+          "request": {
+            "method": "DELETE",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/availability/{{id}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "availability", "{{id}}"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/appointments/{{id}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "appointments", "{{id}}"]}
+          }
+        },
+        {
+          "name": "Get by Patient",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/appointments/patient/{{patientId}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "appointments", "patient", "{{patientId}}"]}
+          }
+        },
+        {
+          "name": "Get by Doctor",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/appointments/doctor/{{doctorId}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "appointments", "doctor", "{{doctorId}}"]}
+          }
+        },
+        {
+          "name": "Create Appointment",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"patientId\":\"{{patientId}}\",\"doctorId\":\"{{doctorId}}\",\"scheduledStart\":\"2026-09-20T10:00:00\",\"scheduledEnd\":\"2026-09-20T11:00:00\",\"reasonForVisit\":\"General checkup\"}"},
+            "url": {"raw": "{{baseUrl}}/api/appointments", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "appointments"]}
+          }
+        },
+        {
+          "name": "Cancel Appointment",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/appointments/{{id}}/cancel?cancellationReason=Patient request", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "appointments", "{{id}}", "cancel"]}
+          }
+        },
+        {
+          "name": "Reschedule Appointment",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"newScheduledStart\":\"2026-09-22T10:00:00\",\"newScheduledEnd\":\"2026-09-22T11:00:00\"}"},
+            "url": {"raw": "{{baseUrl}}/api/appointments/{{id}}/reschedule", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "appointments", "{{id}}", "reschedule"]}
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/appointments/{{id}}/status?status=Confirmed", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "appointments", "{{id}}", "status"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "Chat",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"message\":\"I have a headache\"}"},
+            "url": {"raw": "{{baseUrl}}/api/ai/chat", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "ai", "chat"]}
+          }
+        },
+        {
+          "name": "Symptom Check",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"symptoms\":[\"headache\",\"fever\"]}"},
+            "url": {"raw": "{{baseUrl}}/api/ai/symptom-check", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "ai", "symptom-check"]}
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/api/ai/health", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "ai", "health"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctors",
+      "item": [
+        {
+          "name": "Get All Doctors",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/api/doctors", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "doctors"]}
+          }
+        },
+        {
+          "name": "Get by ID",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/api/doctors/{{id}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "doctors", "{{id}}"]}
+          }
+        },
+        {
+          "name": "Get by Specialty",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/api/doctors/specialty/{{specialtyId}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "doctors", "specialty", "{{specialtyId}}"]}
+          }
+        },
+        {
+          "name": "Create Doctor",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"userId\":\"{{userId}}\",\"licenseNumber\":\"LIC123\",\"yearsOfExperience\":5,\"consultationFee\":100,\"clinicName\":\"Test Clinic\",\"clinicAddress\":\"123 Main St\"}"},
+            "url": {"raw": "{{baseUrl}}/api/doctors", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "doctors"]}
+          }
+        },
+        {
+          "name": "Update Doctor",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"licenseNumber\":\"LIC456\",\"yearsOfExperience\":10}"},
+            "url": {"raw": "{{baseUrl}}/api/doctors/{{id}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "doctors", "{{id}}"]}
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/doctors/{{id}}/status", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "doctors", "{{id}}", "status"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/patients/{{id}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "patients", "{{id}}"]}
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/patients/{{id}}/profile", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "patients", "{{id}}", "profile"]}
+          }
+        },
+        {
+          "name": "Create Profile",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"medicalRecordNumber\":\"MRN001\",\"dateOfBirth\":\"2000-01-01\",\"gender\":\"Male\",\"bloodGroup\":\"O+\"}"},
+            "url": {"raw": "{{baseUrl}}/api/patients/{{id}}/profile", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "patients", "{{id}}", "profile"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Specialties",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/api/specialties", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "specialties"]}
+          }
+        },
+        {
+          "name": "Get by ID",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{baseUrl}}/api/specialties/{{id}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "specialties", "{{id}}"]}
+          }
+        },
+        {
+          "name": "Create Specialty",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"name\":\"Cardiology\",\"description\":\"Heart specialist\"}"},
+            "url": {"raw": "{{baseUrl}}/api/specialties", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "specialties"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/admin/dashboard", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "admin", "dashboard"]}
+          }
+        },
+        {
+          "name": "Get Users",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/admin/users", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "admin", "users"]}
+          }
+        },
+        {
+          "name": "Get System Status",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/admin/system-status", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "admin", "system-status"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patient Intakes",
+      "item": [
+        {
+          "name": "Create Intake",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{token}}"}],
+            "body": {"mode": "raw", "raw": "{\"patientId\":\"{{patientId}}\",\"appointmentId\":\"{{appointmentId}}\",\"symptoms\":\"headache and fever\",\"duration\":\"3 days\"}"},
+            "url": {"raw": "{{baseUrl}}/api/patient-intakes", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "patient-intakes"]}
+          }
+        },
+        {
+          "name": "Get by Patient",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{baseUrl}}/api/patient-intakes/patient/{{patientId}}", "protocol": "http", "host": [{{baseUrl}}], "path": ["api", "patient-intakes", "patient", "{{patientId}}"]}
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:5001"},
+    {"key": "token", "value": "YOUR_JWT_TOKEN_HERE"},
+    {"key": "doctorId", "value": "REPLACE_WITH_DOCTOR_ID"},
+    {"key": "patientId", "value": "REPLACE_WITH_PATIENT_ID"},
+    {"key": "specialtyId", "value": "REPLACE_WITH_SPECIALTY_ID"},
+    {"key": "date", "value": "2026-09-20"}
+  ]
+}
