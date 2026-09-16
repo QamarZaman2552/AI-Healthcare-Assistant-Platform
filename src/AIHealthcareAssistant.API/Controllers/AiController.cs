@@ -1,4 +1,5 @@
 ﻿using AIHealthcareAssistant.Application.Common.Interfaces;
+using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Ai;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,13 +26,11 @@ public class AiController : ControllerBase
     /// Sends a message to the AI healthcare assistant.
     /// </summary>
     [HttpPost("chat")]
-    [ProducesResponseType(
-        typeof(AIChatResponseDto),
-        StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status408RequestTimeout)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(AIChatResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status408RequestTimeout)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AIChatResponseDto>> Chat(
         [FromBody] AIChatRequestDto request,
         CancellationToken cancellationToken)
@@ -46,56 +45,32 @@ public class AiController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new
-            {
-                message = ex.Message
-            });
+            return BadRequest(ApiErrorResponse.Error(ex.Message));
         }
         catch (TimeoutException ex)
         {
-            _logger.LogError(
-                ex,
-                "AI chat request timed out.");
-
+            _logger.LogError(ex, "AI chat request timed out.");
             return StatusCode(
                 StatusCodes.Status408RequestTimeout,
-                new
-                {
-                    message = "AI service request timed out."
-                });
+                ApiErrorResponse.Error("AI service request timed out."));
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(
-                ex,
-                "AI provider is unavailable.");
-
+            _logger.LogError(ex, "AI provider is unavailable.");
             return StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
-                new
-                {
-                    message = "AI service is currently unavailable."
-                });
+                ApiErrorResponse.Error("AI service is currently unavailable."));
         }
         catch (KeyNotFoundException ex)
         {
-            return NotFound(new
-            {
-                message = ex.Message
-            });
+            return NotFound(ApiErrorResponse.Error(ex.Message));
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Unexpected AI chat error.");
-
+            _logger.LogError(ex, "Unexpected AI chat error.");
             return StatusCode(
                 StatusCodes.Status500InternalServerError,
-                new
-                {
-                    message = "An unexpected error occurred."
-                });
+                ApiErrorResponse.Error("An unexpected error occurred."));
         }
     }
 
@@ -103,13 +78,11 @@ public class AiController : ControllerBase
     /// Performs an AI-powered symptom assessment.
     /// </summary>
     [HttpPost("symptom-check")]
-    [ProducesResponseType(
-        typeof(AISymptomCheckResponseDto),
-        StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status408RequestTimeout)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(AISymptomCheckResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status408RequestTimeout)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AISymptomCheckResponseDto>> SymptomCheck(
         [FromBody] AISymptomCheckRequestDto request,
         CancellationToken cancellationToken)
@@ -124,49 +97,28 @@ public class AiController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new
-            {
-                message = ex.Message
-            });
+            return BadRequest(ApiErrorResponse.Error(ex.Message));
         }
         catch (TimeoutException ex)
         {
-            _logger.LogError(
-                ex,
-                "AI symptom check timed out.");
-
+            _logger.LogError(ex, "AI symptom check timed out.");
             return StatusCode(
                 StatusCodes.Status408RequestTimeout,
-                new
-                {
-                    message = "AI service request timed out."
-                });
+                ApiErrorResponse.Error("AI symptom check timed out."));
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(
-                ex,
-                "AI provider unavailable.");
-
+            _logger.LogError(ex, "AI provider unavailable.");
             return StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
-                new
-                {
-                    message = "AI service is currently unavailable."
-                });
+                ApiErrorResponse.Error("AI provider unavailable."));
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Unexpected symptom check error.");
-
+            _logger.LogError(ex, "Unexpected symptom check error.");
             return StatusCode(
                 StatusCodes.Status500InternalServerError,
-                new
-                {
-                    message = "An unexpected error occurred."
-                });
+                ApiErrorResponse.Error("An unexpected error occurred."));
         }
     }
 
@@ -175,8 +127,8 @@ public class AiController : ControllerBase
     /// </summary>
     [HttpGet("health")]
     [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Health(
         CancellationToken cancellationToken)
     {
