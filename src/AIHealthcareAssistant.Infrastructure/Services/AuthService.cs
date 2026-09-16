@@ -157,27 +157,51 @@ public class AuthService : IAuthService
 
     private static string HashPassword(string password)
     {
-        using var hmac = new HMACSHA256();
-        var salt = hmac.Key;
-        var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA256);
-        var hash = pbkdf2.GetBytes(32);
-        var hashBytes = new byte[64];
-        Array.Copy(salt, 0, hashBytes, 0, 32);
-        Array.Copy(hash, 0, hashBytes, 32, 32);
-        return Convert.ToBase64String(hashBytes);
+        var salt = RandomNumberGenerator.GetBytes(32);
+
+        var hash = Rfc2898DeriveBytes.Pbkdf2(
+            password,
+            salt,
+            100_000,
+            HashAlgorithmName.SHA256,
+            32);
+
+        var result = new byte[64];
+
+        Buffer.BlockCopy(salt, 0, result, 0, 32);
+        Buffer.BlockCopy(hash, 0, result, 32, 32);
+
+        return Convert.ToBase64String(result);
     }
 
-    private static bool VerifyPassword(string password, string hash)
+    private static bool VerifyPassword(
+        string password,
+        string storedHash)
     {
-        var hashBytes = Convert.FromBase64String(hash);
-        var salt = new byte[32];
-        Array.Copy(hashBytes, 0, salt, 0, 32);
-        var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA256);
-        var computedHash = pbkdf2.GetBytes(32);
-        for (int i = 0; i < 32; i++)
+        try
         {
-            if (hashBytes[i + 32] != computedHash[i]) return false;
+            var storedBytes = Convert.FromBase64String(storedHash);
+
+            if (storedBytes.Length != 64)
+                return false;
+
+            var salt = storedBytes[..32];
+            var expectedHash = storedBytes[32..];
+
+            var actualHash = Rfc2898DeriveBytes.Pbkdf2(
+                password,
+                salt,
+                100_000,
+                HashAlgorithmName.SHA256,
+                32);
+
+            return CryptographicOperations.FixedTimeEquals(
+                actualHash,
+                expectedHash);
         }
-        return true;
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 }
