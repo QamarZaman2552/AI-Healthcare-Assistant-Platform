@@ -27,6 +27,16 @@ public class PatientService : IPatientService
         return patient == null ? null : ToResponse(patient);
     }
 
+    public async Task<List<PatientResponse>> GetAllAsync()
+    {
+        var patients = await BaseQuery()
+            .OrderBy(p => p.User.FirstName)
+            .ThenBy(p => p.User.LastName)
+            .ToListAsync();
+
+        return patients.Select(ToResponse).ToList();
+    }
+
     public async Task<PatientProfileResponse?> GetProfileAsync(Guid patientId)
     {
         var profile = await _context.PatientProfiles.FirstOrDefaultAsync(p => p.PatientId == patientId);
@@ -76,6 +86,51 @@ public class PatientService : IPatientService
         await _context.SaveChangesAsync();
 
         return ToProfileResponse(profile);
+    }
+
+    public async Task<PatientHistoryResponse?> GetHistoryAsync(Guid patientId)
+    {
+        var patient = await BaseQuery().FirstOrDefaultAsync(p => p.Id == patientId);
+        if (patient == null)
+            return null;
+
+        var appointments = await _context.Appointments
+            .Include(a => a.Status)
+            .Include(a => a.Patient)
+            .ThenInclude(p => p.User)
+            .Include(a => a.Doctor)
+            .ThenInclude(d => d.User)
+            .Where(a => a.PatientId == patientId)
+            .OrderByDescending(a => a.ScheduledStart)
+            .ToListAsync();
+
+        var appointmentResponses = appointments.Select(a => new Application.Features.Appointments.AppointmentResponse
+        {
+            Id = a.Id,
+            PatientId = a.PatientId,
+            PatientName = $"{a.Patient?.User?.FirstName} {a.Patient?.User?.LastName}",
+            DoctorId = a.DoctorId,
+            DoctorName = $"{a.Doctor?.User?.FirstName} {a.Doctor?.User?.LastName}",
+            Status = a.Status?.Name ?? string.Empty,
+            ScheduledStart = a.ScheduledStart,
+            ScheduledEnd = a.ScheduledEnd,
+            ReasonForVisit = a.ReasonForVisit,
+            Notes = a.Notes,
+            CancellationReason = a.CancellationReason,
+            CancelledAt = a.CancelledAt,
+            CreatedAt = a.CreatedAt
+        }).ToList();
+
+        return new PatientHistoryResponse
+        {
+            PatientId = patient.Id,
+            FullName = $"{patient.User.FirstName} {patient.User.LastName}",
+            Email = patient.User.Email,
+            Appointments = appointmentResponses,
+            TotalAppointments = appointments.Count,
+            CompletedAppointments = appointments.Count(a => a.Status?.Name == "Completed"),
+            CancelledAppointments = appointments.Count(a => a.Status?.Name == "Cancelled")
+        };
     }
 
     private static void ValidateProfile(PatientProfileRequest request)

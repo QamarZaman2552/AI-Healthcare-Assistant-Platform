@@ -96,5 +96,22 @@ public class SpecialitiesController : ControllerBase
             result,
             "Specialty updated successfully."));
     }
+
+    /// <summary>
+    /// Deletes a medical specialty.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 409)]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _specialtyService.DeleteAsync(id);
+
+        return NoContent();
+    }
 }
 

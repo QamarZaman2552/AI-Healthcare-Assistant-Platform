@@ -19,6 +19,21 @@ public class PatientsController : ControllerBase
     }
 
     /// <summary>
+    /// Gets all patients.
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<List<PatientResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<List<PatientResponse>>>> GetAll()
+    {
+        var result = await _patientService.GetAllAsync();
+
+        return Ok(ApiResponse<List<PatientResponse>>.Ok(
+            result,
+            "Patients retrieved successfully."));
+    }
+
+    /// <summary>
     /// Gets a patient by ID.
     /// </summary>
     [HttpGet("{id:guid}")]
@@ -120,6 +135,26 @@ public class PatientsController : ControllerBase
         return Ok(ApiResponse<PatientProfileResponse>.Ok(
             result,
             "Patient profile updated successfully."));
+    }
+
+    /// <summary>
+    /// Gets patient appointment history.
+    /// </summary>
+    [HttpGet("{id:guid}/history")]
+    [ProducesResponseType(typeof(ApiResponse<PatientHistoryResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<PatientHistoryResponse>>> GetHistory(Guid id)
+    {
+        var result = await _patientService.GetHistoryAsync(id);
+
+        if (result == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Patient was not found."));
+
+        return Ok(ApiResponse<PatientHistoryResponse>.Ok(
+            result,
+            "Patient history retrieved successfully."));
     }
 }
 

@@ -68,6 +68,19 @@ public class SpecialtyService : ISpecialtyService
             .ToListAsync();
     }
 
+    public async Task DeleteAsync(Guid id)
+    {
+        var specialty = await _context.Specialties.FindAsync(id)
+            ?? throw new KeyNotFoundException("Specialty not found");
+
+        var hasDoctors = await _context.DoctorSpecialties.AnyAsync(ds => ds.SpecialtyId == id);
+        if (hasDoctors)
+            throw new InvalidOperationException("Cannot delete specialty that is assigned to doctors");
+
+        _context.Specialties.Remove(specialty);
+        await _context.SaveChangesAsync();
+    }
+
     private static SpecialtyResponse ToResponse(Specialty specialty) => new()
     {
         Id = specialty.Id,
