@@ -37,6 +37,26 @@ public class PatientService : IPatientService
         return patients.Select(ToResponse).ToList();
     }
 
+    public async Task<PatientResponse> RegisterAsync(Guid userId)
+    {
+        var user = await _context.Users.FindAsync(userId)
+            ?? throw new KeyNotFoundException("User not found");
+
+        if (await _context.Patients.AnyAsync(p => p.UserId == userId))
+            throw new InvalidOperationException("Patient is already registered");
+
+        var patient = new Patient
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId
+        };
+
+        _context.Patients.Add(patient);
+        await _context.SaveChangesAsync();
+
+        return ToResponse(patient);
+    }
+
     public async Task<PatientProfileResponse?> GetProfileAsync(Guid patientId)
     {
         var profile = await _context.PatientProfiles.FirstOrDefaultAsync(p => p.PatientId == patientId);

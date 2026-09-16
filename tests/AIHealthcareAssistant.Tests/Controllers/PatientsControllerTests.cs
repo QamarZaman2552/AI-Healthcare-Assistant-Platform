@@ -1,8 +1,10 @@
 using AIHealthcareAssistant.API.Controllers;
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Patients;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.Tests.Controllers;
 
@@ -117,5 +119,39 @@ public class PatientsControllerTests
         var result = await _controller.GetHistory(id);
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task Register_ValidUser_ReturnsCreated()
+    {
+        var userId = Guid.NewGuid();
+        var patient = new PatientResponse
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            FullName = "John Doe",
+            Email = "john@test.com"
+        };
+
+        _patientServiceMock
+            .Setup(x => x.RegisterAsync(userId))
+            .ReturnsAsync(patient);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+                }))
+            }
+        };
+
+        var result = await _controller.Register();
+
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<PatientResponse>>(createdResult.Value);
+        Assert.Equal(201, createdResult.StatusCode);
     }
 }

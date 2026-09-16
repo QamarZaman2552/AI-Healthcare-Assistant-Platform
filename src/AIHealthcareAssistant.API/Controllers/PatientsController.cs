@@ -3,6 +3,7 @@ using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Patients;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
@@ -16,6 +17,30 @@ public class PatientsController : ControllerBase
     public PatientsController(IPatientService patientService)
     {
         _patientService = patientService;
+    }
+
+    /// <summary>
+    /// Registers the current user as a patient.
+    /// </summary>
+    [HttpPost("register")]
+    [ProducesResponseType(typeof(ApiResponse<PatientResponse>), 201)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 409)]
+    public async Task<ActionResult<ApiResponse<PatientResponse>>> Register()
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        var result = await _patientService.RegisterAsync(userId);
+
+        var response = ApiResponse<PatientResponse>.Ok(
+            result,
+            "Patient registered successfully.");
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = result.Id },
+            response);
     }
 
     /// <summary>

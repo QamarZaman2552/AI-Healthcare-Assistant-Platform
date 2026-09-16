@@ -9,4 +9,5 @@ public interface IPatientService
     Task<PatientProfileResponse> CreateProfileAsync(Guid patientId, PatientProfileRequest request);
     Task<PatientProfileResponse> UpdateProfileAsync(Guid patientId, PatientProfileRequest request);
     Task<PatientHistoryResponse?> GetHistoryAsync(Guid patientId);
+    Task<PatientResponse> RegisterAsync(Guid userId);
 }
