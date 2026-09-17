@@ -14,4 +14,16 @@ public interface IAIService
 
     Task<bool> HealthCheckAsync(
         CancellationToken cancellationToken = default);
+
+    Task<List<ConversationResponse>> GetConversationsByPatientAsync(
+        Guid patientId,
+        CancellationToken cancellationToken = default);
+
+    Task<ConversationDetailResponse> GetConversationByIdAsync(
+        Guid conversationId,
+        CancellationToken cancellationToken = default);
+
+    Task<ConversationResponse> CreateConversationAsync(
+        CreateConversationRequest request,
+        CancellationToken cancellationToken = default);
 }

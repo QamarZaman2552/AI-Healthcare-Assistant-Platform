@@ -399,4 +399,86 @@ public sealed class AIService : IAIService
 
         return text[startIndex..endIndex].Trim();
     }
+
+    public async Task<List<ConversationResponse>> GetConversationsByPatientAsync(
+        Guid patientId,
+        CancellationToken cancellationToken = default)
+    {
+        var conversations = await _dbContext.AIConversations
+            .Include(c => c.Messages)
+            .Where(c => c.PatientId == patientId)
+            .OrderByDescending(c => c.StartedAt)
+            .Select(c => new ConversationResponse
+            {
+                Id = c.Id,
+                Title = c.Title,
+                Status = c.Status.ToString(),
+                StartedAt = c.StartedAt,
+                MessageCount = c.Messages.Count,
+                EndedAt = c.EndedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return conversations;
+    }
+
+    public async Task<ConversationDetailResponse> GetConversationByIdAsync(
+        Guid conversationId,
+        CancellationToken cancellationToken = default)
+    {
+        var conversation = await _dbContext.AIConversations
+            .Include(c => c.Messages)
+            .FirstOrDefaultAsync(c => c.Id == conversationId, cancellationToken)
+            ?? throw new KeyNotFoundException("Conversation not found");
+
+        return new ConversationDetailResponse
+        {
+            Id = conversation.Id,
+            Title = conversation.Title,
+            Status = conversation.Status.ToString(),
+            StartedAt = conversation.StartedAt,
+            Messages = conversation.Messages
+                .OrderBy(m => m.SequenceNumber)
+                .Select(m => new ConversationMessageResponse
+                {
+                    Id = m.Id,
+                    Role = m.Role.ToString(),
+                    Content = m.Content,
+                    Timestamp = m.CreatedAt
+                })
+                .ToList()
+        };
+    }
+
+    public async Task<ConversationResponse> CreateConversationAsync(
+        CreateConversationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var patient = await _dbContext.Patients.FindAsync(request.PatientId);
+        if (patient == null)
+            throw new KeyNotFoundException("Patient not found");
+
+        var conversation = new AIConversation
+        {
+            Id = Guid.NewGuid(),
+            PatientId = request.PatientId,
+            AppointmentId = request.AppointmentId,
+            Title = request.Title ?? "New Conversation",
+            Status = ConversationStatus.Active,
+            StartedAt = DateTime.UtcNow
+        };
+
+        await _dbContext.AIConversations.AddAsync(conversation, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new ConversationResponse
+        {
+            Id = conversation.Id,
+            Title = conversation.Title,
+            Status = conversation.Status.ToString(),
+            StartedAt = conversation.StartedAt,
+            MessageCount = 0,
+            EndedAt = null
+        };
+    }
 }

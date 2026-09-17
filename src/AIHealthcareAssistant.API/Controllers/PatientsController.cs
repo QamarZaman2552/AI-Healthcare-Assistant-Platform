@@ -163,6 +163,26 @@ public class PatientsController : ControllerBase
     }
 
     /// <summary>
+    /// Gets patient dashboard stats.
+    /// </summary>
+    [HttpGet("dashboard/stats")]
+    [ProducesResponseType(typeof(ApiResponse<PatientDashboardResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<PatientDashboardResponse>>> GetDashboardStats(Guid id)
+    {
+        var result = await _patientService.GetDashboardStatsAsync(id);
+
+        if (result == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Patient dashboard stats were not found."));
+
+        return Ok(ApiResponse<PatientDashboardResponse>.Ok(
+            result,
+            "Patient dashboard stats retrieved successfully."));
+    }
+
+    /// <summary>
     /// Gets patient appointment history.
     /// </summary>
     [HttpGet("{id:guid}/history")]

@@ -159,6 +159,88 @@ public class DoctorService : IDoctorService
         return await GetByIdAsync(id) ?? throw new InvalidOperationException("Failed to load updated doctor");
     }
 
+    public async Task<DoctorDashboardResponse> GetDashboardStatsAsync(Guid doctorId)
+    {
+        var doctor = await _context.Doctors.FindAsync(doctorId);
+        if (doctor == null)
+            throw new KeyNotFoundException("Doctor not found");
+
+        var totalAppointments = await _context.Appointments
+            .CountAsync(a => a.DoctorId == doctorId);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var todayAppointments = await _context.Appointments
+            .CountAsync(a => a.DoctorId == doctorId &&
+                             DateOnly.FromDateTime(a.ScheduledStart) == today);
+
+        var now = DateTime.UtcNow;
+        var upcomingAppointments = await _context.Appointments
+            .Include(a => a.Status)
+            .CountAsync(a => a.DoctorId == doctorId &&
+                             a.ScheduledStart > now &&
+                             (a.Status.Name == "Pending" || a.Status.Name == "Confirmed"));
+
+        var completedAppointments = await _context.Appointments
+            .Include(a => a.Status)
+            .CountAsync(a => a.DoctorId == doctorId && a.Status.Name == "Completed");
+
+        var recentAppointments = await _context.Appointments
+            .Include(a => a.Status)
+            .Include(a => a.Patient).ThenInclude(p => p.User)
+            .Where(a => a.DoctorId == doctorId)
+            .OrderByDescending(a => a.ScheduledStart)
+            .Take(5)
+            .Select(a => new AppointmentSummaryResponse
+            {
+                Id = a.Id,
+                PatientName = a.Patient != null && a.Patient.User != null
+                    ? $"{a.Patient.User.FirstName} {a.Patient.User.LastName}"
+                    : "Unknown",
+                Status = a.Status != null ? a.Status.Name : string.Empty,
+                ScheduledStart = a.ScheduledStart,
+                Type = "Appointment"
+            })
+            .ToListAsync();
+
+        return new DoctorDashboardResponse
+        {
+            TotalAppointments = totalAppointments,
+            TodayAppointments = todayAppointments,
+            UpcomingAppointments = upcomingAppointments,
+            CompletedAppointments = completedAppointments,
+            RecentAppointments = recentAppointments
+        };
+    }
+
+    public async Task<List<DoctorAppointmentResponse>> GetDoctorAppointmentsAsync(Guid doctorId, DateOnly date)
+    {
+        var doctor = await _context.Doctors.FindAsync(doctorId);
+        if (doctor == null)
+            throw new KeyNotFoundException("Doctor not found");
+
+        var startOfDay = date.ToDateTime(TimeOnly.MinValue);
+        var endOfDay = date.ToDateTime(TimeOnly.MaxValue);
+
+        return await _context.Appointments
+            .Include(a => a.Status)
+            .Include(a => a.Patient).ThenInclude(p => p.User)
+            .Where(a => a.DoctorId == doctorId &&
+                        a.ScheduledStart >= startOfDay &&
+                        a.ScheduledStart <= endOfDay)
+            .OrderBy(a => a.ScheduledStart)
+            .Select(a => new DoctorAppointmentResponse
+            {
+                Id = a.Id,
+                PatientName = a.Patient != null && a.Patient.User != null
+                    ? $"{a.Patient.User.FirstName} {a.Patient.User.LastName}"
+                    : "Unknown",
+                ScheduledStart = a.ScheduledStart,
+                Status = a.Status != null ? a.Status.Name : string.Empty,
+                DurationMinutes = (int)(a.ScheduledEnd - a.ScheduledStart).TotalMinutes
+            })
+            .ToListAsync();
+    }
+
     public async Task<SpecialtyResponse> AssignSpecialtyAsync(Guid doctorId, AssignSpecialtyRequest request)
     {
         var doctor = await _context.Doctors.FindAsync(doctorId)

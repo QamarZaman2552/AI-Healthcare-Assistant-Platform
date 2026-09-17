@@ -134,6 +134,78 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
+    /// Gets all conversations for the authenticated patient.
+    /// </summary>
+    [HttpGet("conversations/patient/{id:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<List<ConversationResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<List<ConversationResponse>>>> GetConversationsByPatient(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await _aiService.GetConversationsByPatientAsync(id, cancellationToken);
+
+        return Ok(ApiResponse<List<ConversationResponse>>.Ok(
+            result,
+            "Conversations retrieved successfully."));
+    }
+
+    /// <summary>
+    /// Gets a specific conversation with all messages.
+    /// </summary>
+    [HttpGet("conversations/{id:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<ConversationDetailResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<ConversationDetailResponse>>> GetConversation(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _aiService.GetConversationByIdAsync(id, cancellationToken);
+
+            return Ok(ApiResponse<ConversationDetailResponse>.Ok(
+                result,
+                "Conversation retrieved successfully."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiErrorResponse.Error(ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Creates a new conversation for a patient.
+    /// </summary>
+    [HttpPost("conversations")]
+    [ProducesResponseType(typeof(ApiResponse<ConversationResponse>), 201)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    public async Task<ActionResult<ApiResponse<ConversationResponse>>> CreateConversation(
+        [FromBody] CreateConversationRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _aiService.CreateConversationAsync(request, cancellationToken);
+
+            return CreatedAtAction(
+                nameof(GetConversation),
+                new { id = result.Id },
+                ApiResponse<ConversationResponse>.Ok(
+                    result,
+                    "Conversation created successfully."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiErrorResponse.Error(ex.Message));
+        }
+    }
+
+    /// <summary>
     /// Checks whether the AI provider is available.
     /// </summary>
     [HttpGet("health")]

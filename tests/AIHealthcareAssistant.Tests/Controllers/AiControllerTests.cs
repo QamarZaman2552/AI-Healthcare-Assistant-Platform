@@ -1,5 +1,6 @@
 using AIHealthcareAssistant.API.Controllers;
 using AIHealthcareAssistant.Application.Common.Interfaces;
+using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Ai;
 using AIHealthcareAssistant.Application.Features.Patients;
 using Microsoft.AspNetCore.Http;
@@ -221,5 +222,97 @@ public class AiControllerTests
 
         var statusCodeResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusCodeResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetConversationsByPatient_ExistingPatient_ReturnsOk()
+    {
+        var patientId = Guid.NewGuid();
+        var conversations = new List<ConversationResponse>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Title = "Chat about symptoms",
+                Status = "Active",
+                StartedAt = DateTime.UtcNow,
+                MessageCount = 5,
+                EndedAt = null
+            }
+        };
+
+        _aiServiceMock
+            .Setup(x => x.GetConversationsByPatientAsync(patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conversations);
+
+        var result = await _controller.GetConversationsByPatient(patientId, CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<List<ConversationResponse>>>(okResult.Value);
+        Assert.Single(response.Data);
+    }
+
+    [Fact]
+    public async Task GetConversation_ExistingConversation_ReturnsOk()
+    {
+        var conversationId = Guid.NewGuid();
+        var conversation = new ConversationDetailResponse
+        {
+            Id = conversationId,
+            Title = "Test Conversation",
+            Status = "Active",
+            StartedAt = DateTime.UtcNow,
+            Messages = new List<ConversationMessageResponse>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    Role = "user",
+                    Content = "Hello",
+                    Timestamp = DateTime.UtcNow
+                }
+            }
+        };
+
+        _aiServiceMock
+            .Setup(x => x.GetConversationByIdAsync(conversationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(conversation);
+
+        var result = await _controller.GetConversation(conversationId, CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<ConversationDetailResponse>>(okResult.Value);
+        Assert.Equal("Test Conversation", response.Data.Title);
+    }
+
+    [Fact]
+    public async Task CreateConversation_ValidRequest_ReturnsCreated()
+    {
+        var patientId = Guid.NewGuid();
+        var request = new CreateConversationRequest
+        {
+            PatientId = patientId,
+            Title = "New Chat"
+        };
+
+        var response = new ConversationResponse
+        {
+            Id = Guid.NewGuid(),
+            Title = "New Chat",
+            Status = "Active",
+            StartedAt = DateTime.UtcNow,
+            MessageCount = 0,
+            EndedAt = null
+        };
+
+        _aiServiceMock
+            .Setup(x => x.CreateConversationAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var result = await _controller.CreateConversation(request, CancellationToken.None);
+
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var apiResponse = Assert.IsType<ApiResponse<ConversationResponse>>(createdResult.Value);
+        Assert.Equal("New Chat", apiResponse.Data.Title);
     }
 }
