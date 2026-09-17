@@ -7,8 +7,7 @@ namespace AIHealthcareAssistant.Application.Features.Ai
 {
     public class AISymptomCheckRequestDto
     {
-        [Required]
-        public Guid PatientId { get; set; }
+        public Guid? PatientId { get; set; }
 
         [Required(ErrorMessage = "Symptoms are required.")]
         [MinLength(2, ErrorMessage = "Symptoms must be at least 2 characters.")]

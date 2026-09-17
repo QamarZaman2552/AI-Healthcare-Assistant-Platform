@@ -35,11 +35,13 @@ public sealed class AIService : IAIService
         AIChatRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        if (request.PatientId == Guid.Empty)
+        if (!request.PatientId.HasValue || request.PatientId.Value == Guid.Empty)
             throw new ArgumentException("PatientId is required.");
 
         if (string.IsNullOrWhiteSpace(request.Message))
             throw new ArgumentException("Message is required.");
+
+        var patientId = request.PatientId.Value;
 
         AIConversation conversation;
 
@@ -49,7 +51,7 @@ public sealed class AIService : IAIService
                 .Include(x => x.Messages)
                 .FirstOrDefaultAsync(
                     x => x.Id == request.ConversationId.Value &&
-                         x.PatientId == request.PatientId,
+                         x.PatientId == patientId,
                     cancellationToken)
                 ?? throw new KeyNotFoundException(
                     "AI conversation was not found.");
@@ -59,7 +61,7 @@ public sealed class AIService : IAIService
             conversation = new AIConversation
             {
                 Id = Guid.NewGuid(),
-                PatientId = request.PatientId,
+                PatientId = patientId,
                 AppointmentId = request.AppointmentId,
                 Title = request.Message.Length > 100
                     ? request.Message[..100]
@@ -175,11 +177,13 @@ public sealed class AIService : IAIService
         AISymptomCheckRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        if (request.PatientId == Guid.Empty)
+        if (!request.PatientId.HasValue || request.PatientId.Value == Guid.Empty)
             throw new ArgumentException("PatientId is required.");
 
         if (string.IsNullOrWhiteSpace(request.Symptoms))
             throw new ArgumentException("Symptoms are required.");
+
+        var patientId = request.PatientId.Value;
 
         var prompt = $"""
             You are a healthcare symptom assessment assistant.
@@ -219,7 +223,7 @@ public sealed class AIService : IAIService
 
         var chatRequest = new AIChatRequestDto
         {
-            PatientId = request.PatientId,
+            PatientId = patientId,
             Message = prompt
         };
 

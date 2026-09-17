@@ -1,8 +1,10 @@
 ﻿using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Ai;
+using AIHealthcareAssistant.Application.Features.Patients;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
@@ -12,13 +14,16 @@ namespace AIHealthcareAssistant.API.Controllers;
 public class AiController : ControllerBase
 {
     private readonly IAIService _aiService;
+    private readonly IPatientService _patientService;
     private readonly ILogger<AiController> _logger;
 
     public AiController(
         IAIService aiService,
+        IPatientService patientService,
         ILogger<AiController> logger)
     {
         _aiService = aiService;
+        _patientService = patientService;
         _logger = logger;
     }
 
@@ -37,6 +42,9 @@ public class AiController : ControllerBase
     {
         try
         {
+            var patientId = await GetPatientIdFromTokenAsync();
+            request.PatientId = patientId;
+
             var result = await _aiService.ChatAsync(
                 request,
                 cancellationToken);
@@ -89,6 +97,9 @@ public class AiController : ControllerBase
     {
         try
         {
+            var patientId = await GetPatientIdFromTokenAsync();
+            request.PatientId = patientId;
+
             var result = await _aiService.SymptomCheckAsync(
                 request,
                 cancellationToken);
@@ -151,5 +162,19 @@ public class AiController : ControllerBase
             status = "healthy",
             service = "AI"
         });
+    }
+
+    private async Task<Guid> GetPatientIdFromTokenAsync()
+    {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdString))
+            throw new ArgumentException("User ID not found in token");
+
+        var userId = Guid.Parse(userIdString);
+        var patient = await _patientService.GetByUserIdAsync(userId);
+        if (patient == null)
+            throw new KeyNotFoundException("Patient not found for the authenticated user");
+
+        return patient.Id;
     }
 }

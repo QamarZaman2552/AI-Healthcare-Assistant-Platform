@@ -1,23 +1,49 @@
 using AIHealthcareAssistant.API.Controllers;
 using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Features.Ai;
+using AIHealthcareAssistant.Application.Features.Patients;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.Tests.Controllers;
 
 public class AiControllerTests
 {
     private readonly Mock<IAIService> _aiServiceMock;
+    private readonly Mock<IPatientService> _patientServiceMock;
     private readonly Mock<ILogger<AiController>> _loggerMock;
     private readonly AiController _controller;
 
     public AiControllerTests()
     {
         _aiServiceMock = new Mock<IAIService>();
+        _patientServiceMock = new Mock<IPatientService>();
         _loggerMock = new Mock<ILogger<AiController>>();
-        _controller = new AiController(_aiServiceMock.Object, _loggerMock.Object);
+        _controller = new AiController(_aiServiceMock.Object, _patientServiceMock.Object, _loggerMock.Object);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+                }))
+            }
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetByUserIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new PatientResponse
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                FullName = "Test Patient",
+                Email = "test@test.com"
+            });
     }
 
     [Fact]

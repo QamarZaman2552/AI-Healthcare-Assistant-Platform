@@ -10,7 +10,7 @@ public class AIChatRequestDto
 
     public string Message { get; set; } = string.Empty;
 
-    public Guid PatientId { get; set; }
+    public Guid? PatientId { get; set; }
 
     public Guid? AppointmentId { get; set; }
 

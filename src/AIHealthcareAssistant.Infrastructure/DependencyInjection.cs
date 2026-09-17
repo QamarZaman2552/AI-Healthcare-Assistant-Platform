@@ -1,4 +1,5 @@
 using System.Text;
+using AIHealthcareAssistant.Application.Features.Admin;
 using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Features.Appointments;
 using AIHealthcareAssistant.Application.Features.Auth;
@@ -40,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IPatientService, PatientService>();
         services.AddScoped<ISpecialtyService, SpecialtyService>();
         services.AddScoped<IPatientIntakeService, PatientIntakeService>();
+        services.AddScoped<IAdminService, AdminService>();
 
         var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>()!;
         var key = Encoding.UTF8.GetBytes(jwtSettings.Key);
