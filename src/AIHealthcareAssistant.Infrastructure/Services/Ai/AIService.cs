@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Features.Ai;
@@ -92,14 +93,20 @@ public sealed class AIService : IAIService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        // Dynamic Context Injection
+        var patientContext = await BuildPatientContextAsync(request.PatientId, cancellationToken);
+
         var providerMessages = new List<AIProviderMessage>
         {
             new()
             {
                 Role = "system",
                 Content =
-                    """
+                    $"""
                     You are an AI healthcare assistant.
+
+                    Patient Context:
+                    {patientContext}
 
                     Provide general health information only.
                     Do not provide a definitive medical diagnosis.
@@ -181,11 +188,15 @@ public sealed class AIService : IAIService
         if (string.IsNullOrWhiteSpace(request.Symptoms))
             throw new ArgumentException("Symptoms are required.");
 
+        var patientContext = await BuildPatientContextAsync(request.PatientId, cancellationToken);
+
         var prompt = $"""
             You are a healthcare symptom assessment assistant.
 
-            Patient information:
+            Patient Database Medical Context:
+            {patientContext}
 
+            Current Input Details:
             Age: {request.Age}
             Gender: {request.Gender ?? "Not provided"}
 
@@ -253,6 +264,45 @@ public sealed class AIService : IAIService
 
             return false;
         }
+    }
+
+    private async Task<string> BuildPatientContextAsync(Guid patientId, CancellationToken cancellationToken)
+    {
+        var patient = await _dbContext.Patients
+            .AsNoTracking()
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.Id == patientId || p.UserId == patientId, cancellationToken);
+
+        if (patient == null)
+            return "No registered patient context available.";
+
+        var profile = await _dbContext.PatientProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PatientId == patient.Id, cancellationToken);
+
+        var latestIntake = await _dbContext.PatientIntakes
+            .AsNoTracking()
+            .Where(i => i.PatientId == patient.Id)
+            .OrderByDescending(i => i.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Patient Name: {patient.User?.FirstName} {patient.User?.LastName}");
+
+        if (profile != null)
+        {
+            sb.AppendLine($"Medical History: {profile.MedicalHistory ?? "N/A"}");
+            sb.AppendLine($"Allergies: {profile.Allergies ?? "None"}");
+            sb.AppendLine($"Current Medications: {profile.CurrentMedications ?? "None"}");
+        }
+
+        if (latestIntake != null)
+        {
+            sb.AppendLine($"Recent Intake Chief Complaint: {latestIntake.ChiefComplaint}");
+            sb.AppendLine($"Recent Intake Symptoms: {latestIntake.SymptomsDescription}");
+        }
+
+        return sb.ToString();
     }
 
     private async Task<AIProviderResponse?> SendToProviderAsync(

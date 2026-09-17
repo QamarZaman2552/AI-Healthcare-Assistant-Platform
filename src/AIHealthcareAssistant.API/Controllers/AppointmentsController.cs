@@ -166,5 +166,25 @@ public class AppointmentsController : ControllerBase
                 result,
                 "Appointment status updated successfully."));
     }
+
+
+    /// <summary>
+    /// Gets doctor appointments filtered by status or date range.
+    /// </summary>
+    [HttpGet("doctor/{doctorId:guid}/dashboard")]
+    [Authorize(Roles = "Doctor,Admin")]
+    [ProducesResponseType(typeof(ApiResponse<List<AppointmentResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<AppointmentResponse>>>> GetDoctorDashboardAppointments(
+        Guid doctorId,
+        [FromQuery] string? status,
+        [FromQuery] DateTime? date)
+    {
+        var result = await _appointmentService.GetDoctorDashboardAppointmentsAsync(doctorId, status, date);
+
+        return Ok(
+            ApiResponse<List<AppointmentResponse>>.Ok(
+                result,
+                "Doctor dashboard appointments retrieved successfully."));
+    }
 }
 

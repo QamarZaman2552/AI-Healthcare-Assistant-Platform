@@ -1,5 +1,6 @@
 using System.Text;
 using AIHealthcareAssistant.Application.Common.Interfaces;
+using AIHealthcareAssistant.Application.Features.Admin;
 using AIHealthcareAssistant.Application.Features.Appointments;
 using AIHealthcareAssistant.Application.Features.Auth;
 using AIHealthcareAssistant.Application.Features.Availability;
@@ -9,6 +10,7 @@ using AIHealthcareAssistant.Application.Features.Patients;
 using AIHealthcareAssistant.Application.Features.Specialties;
 using AIHealthcareAssistant.Infrastructure.Persistence;
 using AIHealthcareAssistant.Infrastructure.Services;
+using AIHealthcareAssistant.Infrastructure.Services.Admin;
 using AIHealthcareAssistant.Infrastructure.Services.Ai;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IPatientService, PatientService>();
         services.AddScoped<ISpecialtyService, SpecialtyService>();
         services.AddScoped<IPatientIntakeService, PatientIntakeService>();
+        services.AddScoped<IAdminService, AdminService>();
 
         var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>()!;
         var key = Encoding.UTF8.GetBytes(jwtSettings.Key);
