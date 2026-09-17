@@ -69,6 +69,28 @@ public class AppointmentService : IAppointmentService
         if (patientHasConflict)
             throw new InvalidOperationException("Patient already has an appointment at this time");
 
+        Guid? intakeId = request.PatientIntakeId;
+        if (!intakeId.HasValue)
+        {
+            var latestIntake = await _context.PatientIntakes
+                .Where(i => i.PatientId == request.PatientId)
+                .OrderByDescending(i => i.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            intakeId = latestIntake?.Id;
+        }
+
+        Guid? conversationId = request.AIConversationId;
+        if (!conversationId.HasValue)
+        {
+            var latestConversation = await _context.AIConversations
+                .Where(c => c.PatientId == request.PatientId)
+                .OrderByDescending(c => c.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            conversationId = latestConversation?.Id;
+        }
+
         var appointment = new Appointment
         {
             Id = Guid.NewGuid(),
@@ -80,6 +102,8 @@ public class AppointmentService : IAppointmentService
             ScheduledEnd = request.ScheduledEnd,
             ReasonForVisit = request.ReasonForVisit,
             Notes = request.Notes,
+            PatientIntakeId = intakeId,
+            AIConversationId = conversationId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -112,6 +136,8 @@ public class AppointmentService : IAppointmentService
             .ThenInclude(p => p.User)
             .Include(a => a.Doctor)
             .ThenInclude(d => d.User)
+            .Include(a => a.Intake)
+            .Include(a => a.Conversation)
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (appointment == null)
@@ -128,6 +154,8 @@ public class AppointmentService : IAppointmentService
             .ThenInclude(p => p.User)
             .Include(a => a.Doctor)
             .ThenInclude(d => d.User)
+            .Include(a => a.Intake)
+            .Include(a => a.Conversation)
             .Where(a => a.PatientId == patientId)
             .OrderByDescending(a => a.ScheduledStart)
             .ToListAsync();
@@ -143,6 +171,8 @@ public class AppointmentService : IAppointmentService
             .ThenInclude(p => p.User)
             .Include(a => a.Doctor)
             .ThenInclude(d => d.User)
+            .Include(a => a.Intake)
+            .Include(a => a.Conversation)
             .Where(a => a.DoctorId == doctorId)
             .OrderByDescending(a => a.ScheduledStart)
             .ToListAsync();
@@ -257,6 +287,40 @@ public class AppointmentService : IAppointmentService
         return MapToResponse(appointment);
     }
 
+    public async Task<List<AppointmentResponse>> GetDoctorDashboardAppointmentsAsync(
+        Guid doctorId,
+        string? status = null,
+        DateTime? date = null)
+    {
+        var query = _context.Appointments
+            .Include(a => a.Status)
+            .Include(a => a.Patient)
+                .ThenInclude(p => p.User)
+            .Include(a => a.Doctor)
+                .ThenInclude(d => d.User)
+            .Include(a => a.Intake)
+            .Include(a => a.Conversation)
+            .Where(a => a.DoctorId == doctorId);
+
+      
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(a => a.Status != null && a.Status.Name == status);
+        }
+
+        if (date.HasValue)
+        {
+            var targetDate = date.Value.Date;
+            query = query.Where(a => a.ScheduledStart.Date == targetDate);
+        }
+
+        var appointments = await query
+            .OrderBy(a => a.ScheduledStart)
+            .ToListAsync();
+
+        return appointments.Select(MapToResponse).ToList();
+    }
+
     private static AppointmentResponse MapToResponse(Appointment appointment)
     {
         var patientUser = appointment.Patient?.User;
@@ -276,7 +340,14 @@ public class AppointmentService : IAppointmentService
             Notes = appointment.Notes,
             CancellationReason = appointment.CancellationReason,
             CancelledAt = appointment.CancelledAt,
-            CreatedAt = appointment.CreatedAt
+            CreatedAt = appointment.CreatedAt,
+
+            PatientIntakeId = appointment.PatientIntakeId,
+            ChiefComplaint = appointment.Intake?.ChiefComplaint,
+            Symptoms = appointment.Intake?.Symptoms,
+
+            AIConversationId = appointment.Conversation?.Id,
+            AISummary = appointment.Conversation?.Summary
         };
     }
 }

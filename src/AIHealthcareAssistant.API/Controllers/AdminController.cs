@@ -1,75 +1,97 @@
-﻿
-using AIHealthcareAssistant.Application.Common.Response;
+﻿using AIHealthcareAssistant.Application.Common.Response;
+using AIHealthcareAssistant.Application.Features.Admin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
+/// <summary>
+/// Provides administrative dashboard, user management and system monitoring endpoints.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "Admin")]
 public class AdminController : ControllerBase
 {
+    private readonly IAdminService _adminService;
+
+    public AdminController(IAdminService adminService)
+    {
+        _adminService = adminService;
+    }
+
     /// <summary>
-    /// Gets the administrator dashboard.
+    /// Gets real-time dashboard statistics for the administrator.
     /// </summary>
     [HttpGet("dashboard")]
-    [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
-    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
-    public IActionResult GetDashboard()
+    [ProducesResponseType(
+        typeof(ApiResponse<AdminDashboardResponse>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ApiErrorResponse),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ApiErrorResponse),
+        StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<AdminDashboardResponse>>> GetDashboard(
+        CancellationToken cancellationToken)
     {
-        var data = new
-        {
-            status = "active",
-            message = "Administrator dashboard is available."
-        };
+        var result = await _adminService.GetDashboardAsync(
+            cancellationToken);
 
         return Ok(
-            ApiResponse<object>.Ok(
-                data,
+            ApiResponse<AdminDashboardResponse>.Ok(
+                result,
                 "Admin dashboard retrieved successfully."));
     }
 
     /// <summary>
-    /// Gets the users available to the administrator.
+    /// Gets all registered users from the database.
     /// </summary>
     [HttpGet("users")]
-    [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
-    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
-    public IActionResult GetUsers()
+    [ProducesResponseType(
+        typeof(ApiResponse<List<AdminUserResponse>>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ApiErrorResponse),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ApiErrorResponse),
+        StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<List<AdminUserResponse>>>> GetUsers(
+        CancellationToken cancellationToken)
     {
-        var data = new
-        {
-            message = "User management endpoint is available."
-        };
+        var result = await _adminService.GetUsersAsync(
+            cancellationToken);
 
         return Ok(
-            ApiResponse<object>.Ok(
-                data,
-                "Users information retrieved successfully."));
+            ApiResponse<List<AdminUserResponse>>.Ok(
+                result,
+                "Users retrieved successfully."));
     }
 
     /// <summary>
-    /// Gets the current system status.
+    /// Checks database and AI service health.
     /// </summary>
     [HttpGet("system-status")]
-    [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
-    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
-    public IActionResult GetSystemStatus()
+    [ProducesResponseType(
+        typeof(ApiResponse<AdminSystemStatusResponse>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ApiErrorResponse),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ApiErrorResponse),
+        StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ApiResponse<AdminSystemStatusResponse>>> GetSystemStatus(
+        CancellationToken cancellationToken)
     {
-        var data = new
-        {
-            status = "operational",
-            service = "AI Healthcare Assistant API"
-        };
+        var result = await _adminService.GetSystemStatusAsync(
+            cancellationToken);
 
         return Ok(
-            ApiResponse<object>.Ok(
-                data,
+            ApiResponse<AdminSystemStatusResponse>.Ok(
+                result,
                 "System status retrieved successfully."));
     }
 }
-

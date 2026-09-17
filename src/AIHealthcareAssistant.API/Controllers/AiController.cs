@@ -3,6 +3,7 @@ using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Ai;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
@@ -23,7 +24,7 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Sends a message to the AI healthcare assistant.
+    /// Sends a message to the AI healthcare assistant with automatic patient context.
     /// </summary>
     [HttpPost("chat")]
     [ProducesResponseType(typeof(AIChatResponseDto), StatusCodes.Status200OK)]
@@ -37,10 +38,17 @@ public class AiController : ControllerBase
     {
         try
         {
-            var result = await _aiService.ChatAsync(
-                request,
-                cancellationToken);
+          
+            if (request.PatientId == Guid.Empty)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (Guid.TryParse(userIdClaim, out var userId))
+                {
+                    request.PatientId = userId;
+                }
+            }
 
+            var result = await _aiService.ChatAsync(request, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)

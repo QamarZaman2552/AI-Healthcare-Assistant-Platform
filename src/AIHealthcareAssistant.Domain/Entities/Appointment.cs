@@ -25,6 +25,9 @@ public class Appointment : AuditableEntity
     public string? CancellationReason { get; set; }
     public DateTime? CancelledAt { get; set; }
 
+    public Guid? PatientIntakeId { get; set; }
     public PatientIntake? Intake { get; set; }
+
+    public Guid? AIConversationId { get; set; }
     public AIConversation? Conversation { get; set; }
 }
