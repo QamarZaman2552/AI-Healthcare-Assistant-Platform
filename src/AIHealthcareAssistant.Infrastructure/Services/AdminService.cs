@@ -20,8 +20,10 @@ public class AdminService : IAdminService
         var totalDoctors = await _context.Doctors.CountAsync();
         var totalAppointments = await _context.Appointments.CountAsync();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var startOfDay = today.ToDateTime(TimeOnly.MinValue);
+        var endOfDay = today.AddDays(1).ToDateTime(TimeOnly.MinValue);
         var todayAppointments = await _context.Appointments
-            .CountAsync(a => a.ScheduledStart.Date == today.ToDateTime(TimeOnly.MinValue));
+            .CountAsync(a => a.ScheduledStart >= startOfDay && a.ScheduledStart < endOfDay);
         var activeUsers = await _context.Users.CountAsync(u => u.IsActive);
 
         return new AdminDashboardResponse
