@@ -73,6 +73,16 @@ public class AvailabilityService : IAvailabilityService
             throw new InvalidOperationException(
                 "End time must be after start time");
 
+        var existing = await _context.DoctorAvailabilities
+            .FirstOrDefaultAsync(a => a.DoctorId == availability.DoctorId
+                && a.Id != id
+                && a.DayOfWeek == request.DayOfWeek
+                && a.StartTime < request.EndTime
+                && a.EndTime > request.StartTime);
+
+        if (existing != null)
+            throw new InvalidOperationException("Availability overlaps with existing schedule");
+
         availability.DayOfWeek = request.DayOfWeek;
         availability.StartTime = request.StartTime;
         availability.EndTime = request.EndTime;

@@ -162,11 +162,15 @@ public class PatientService : IPatientService
         var totalAppointments = await _context.Appointments
             .CountAsync(a => a.PatientId == patientId);
 
+        var pendingStatusId = await _context.AppointmentStatuses
+            .Where(s => s.Name == "Pending" || s.Name == "Confirmed")
+            .Select(s => s.Id)
+            .ToListAsync();
+
         var now = DateTime.UtcNow;
         var upcomingAppointments = await _context.Appointments
-            .Include(a => a.Status)
             .CountAsync(a => a.PatientId == patientId &&
-                             (a.Status.Name == "Pending" || a.Status.Name == "Confirmed") &&
+                             pendingStatusId.Contains(a.AppointmentStatusId) &&
                              a.ScheduledStart > now);
 
         var recentActivities = await _context.Appointments

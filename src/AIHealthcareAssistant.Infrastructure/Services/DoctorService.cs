@@ -169,20 +169,31 @@ public class DoctorService : IDoctorService
             .CountAsync(a => a.DoctorId == doctorId);
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var todayStart = today.ToDateTime(TimeOnly.MinValue);
+        var todayEnd = today.AddDays(1).ToDateTime(TimeOnly.MinValue);
         var todayAppointments = await _context.Appointments
             .CountAsync(a => a.DoctorId == doctorId &&
-                             DateOnly.FromDateTime(a.ScheduledStart) == today);
+                             a.ScheduledStart >= todayStart &&
+                             a.ScheduledStart < todayEnd);
 
         var now = DateTime.UtcNow;
+        var pendingStatusIds = await _context.AppointmentStatuses
+            .Where(s => s.Name == "Pending" || s.Name == "Confirmed")
+            .Select(s => s.Id)
+            .ToListAsync();
+
         var upcomingAppointments = await _context.Appointments
-            .Include(a => a.Status)
             .CountAsync(a => a.DoctorId == doctorId &&
                              a.ScheduledStart > now &&
-                             (a.Status.Name == "Pending" || a.Status.Name == "Confirmed"));
+                             pendingStatusIds.Contains(a.AppointmentStatusId));
+
+        var completedStatusId = await _context.AppointmentStatuses
+            .Where(s => s.Name == "Completed")
+            .Select(s => s.Id)
+            .FirstOrDefaultAsync();
 
         var completedAppointments = await _context.Appointments
-            .Include(a => a.Status)
-            .CountAsync(a => a.DoctorId == doctorId && a.Status.Name == "Completed");
+            .CountAsync(a => a.DoctorId == doctorId && a.AppointmentStatusId == completedStatusId);
 
         var recentAppointments = await _context.Appointments
             .Include(a => a.Status)
