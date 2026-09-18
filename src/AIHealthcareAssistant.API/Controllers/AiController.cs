@@ -222,27 +222,20 @@ public class AiController : ControllerBase
         {
             return StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
-                new
-                {
-                    status = "unhealthy",
-                    service = "AI"
-                });
+                ApiErrorResponse.Error("AI service is currently unavailable."));
         }
 
-        return Ok(new
-        {
-            status = "healthy",
-            service = "AI"
-        });
+        return Ok(ApiResponse<object>.Ok(
+            new { status = "healthy", service = "AI" },
+            "AI service is healthy."));
     }
 
     private async Task<Guid> GetPatientIdFromTokenAsync()
     {
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdString))
-            throw new ArgumentException("User ID not found in token");
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            throw new ArgumentException("User ID not found in token or is invalid");
 
-        var userId = Guid.Parse(userIdString);
         var patient = await _patientService.GetByUserIdAsync(userId);
         if (patient == null)
             throw new KeyNotFoundException("Patient not found for the authenticated user");
