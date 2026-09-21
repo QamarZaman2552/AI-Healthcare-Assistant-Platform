@@ -153,6 +153,52 @@ public class PatientService : IPatientService
         };
     }
 
+    public async Task<PatientDashboardResponse> GetDashboardStatsAsync(Guid patientId)
+    {
+        var patient = await BaseQuery().FirstOrDefaultAsync(p => p.Id == patientId);
+        if (patient == null)
+            throw new KeyNotFoundException("Patient not found");
+
+        var totalAppointments = await _context.Appointments
+            .CountAsync(a => a.PatientId == patientId);
+
+        var pendingStatusId = await _context.AppointmentStatuses
+            .Where(s => s.Name == "Pending" || s.Name == "Confirmed")
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
+        var upcomingAppointments = await _context.Appointments
+            .CountAsync(a => a.PatientId == patientId &&
+                             pendingStatusId.Contains(a.AppointmentStatusId) &&
+                             a.ScheduledStart > now);
+
+        var recentActivities = await _context.Appointments
+            .Include(a => a.Status)
+            .Include(a => a.Doctor).ThenInclude(d => d.User)
+            .Where(a => a.PatientId == patientId)
+            .OrderByDescending(a => a.ScheduledStart)
+            .Take(5)
+            .Select(a => new RecentActivityResponse
+            {
+                AppointmentId = a.Id,
+                DoctorName = a.Doctor != null && a.Doctor.User != null
+                    ? $"{a.Doctor.User.FirstName} {a.Doctor.User.LastName}"
+                    : "Unknown",
+                Status = a.Status != null ? a.Status.Name : string.Empty,
+                ScheduledStart = a.ScheduledStart,
+                Type = "Appointment"
+            })
+            .ToListAsync();
+
+        return new PatientDashboardResponse
+        {
+            TotalAppointments = totalAppointments,
+            UpcomingAppointments = upcomingAppointments,
+            RecentActivity = recentActivities
+        };
+    }
+
     private static void ValidateProfile(PatientProfileRequest request)
     {
         if (!string.IsNullOrWhiteSpace(request.EmergencyContactPhone) &&

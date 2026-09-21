@@ -1,4 +1,5 @@
 using System.Text;
+using AIHealthcareAssistant.Application.Features.Admin;
 using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Features.Admin;
 using AIHealthcareAssistant.Application.Features.Appointments;

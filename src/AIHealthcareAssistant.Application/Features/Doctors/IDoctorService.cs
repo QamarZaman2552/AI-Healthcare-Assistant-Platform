@@ -17,4 +17,6 @@ public interface IDoctorService
     Task RemoveSpecialtyAsync(Guid doctorId, Guid specialtyId);
     Task<List<SpecialtyResponse>> GetSpecialtiesByDoctorAsync(Guid doctorId);
     Task<List<DoctorResponse>> GetDoctorsBySpecialtyAsync(Guid specialtyId);
+    Task<DoctorDashboardResponse> GetDashboardStatsAsync(Guid doctorId);
+    Task<List<DoctorAppointmentResponse>> GetDoctorAppointmentsAsync(Guid doctorId, DateOnly date);
 }

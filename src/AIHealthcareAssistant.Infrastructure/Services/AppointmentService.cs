@@ -37,10 +37,14 @@ public class AppointmentService : IAppointmentService
         if (pendingStatus == null)
             throw new InvalidOperationException("Appointment status not configured");
 
+        var cancelledStatus = await _context.AppointmentStatuses
+            .FirstOrDefaultAsync(s => s.Name == "Cancelled");
+
+        var cancelledStatusId = cancelledStatus?.Id ?? Guid.Empty;
+
         var hasConflict = await _context.Appointments
             .AnyAsync(a => a.DoctorId == request.DoctorId
-                && a.Status != null
-                && a.Status.Name != "Cancelled"
+                && a.AppointmentStatusId != cancelledStatusId
                 && a.ScheduledStart < request.ScheduledEnd
                 && a.ScheduledEnd > request.ScheduledStart);
 
@@ -61,8 +65,7 @@ public class AppointmentService : IAppointmentService
 
         var patientHasConflict = await _context.Appointments
             .AnyAsync(a => a.PatientId == request.PatientId
-                && a.Status != null
-                && a.Status.Name != "Cancelled"
+                && a.AppointmentStatusId != cancelledStatusId
                 && a.ScheduledStart < request.ScheduledEnd
                 && a.ScheduledEnd > request.ScheduledStart);
 
@@ -240,12 +243,18 @@ public class AppointmentService : IAppointmentService
         if (request.NewScheduledEnd <= request.NewScheduledStart)
             throw new InvalidOperationException("End time must be after start time");
 
+<<<<<<< HEAD
     
+=======
+        var cancelledStatus = await _context.AppointmentStatuses
+            .FirstOrDefaultAsync(s => s.Name == "Cancelled");
+        var cancelledStatusId = cancelledStatus?.Id ?? Guid.Empty;
+
+>>>>>>> origin/develop
         var hasConflict = await _context.Appointments
             .AnyAsync(a => a.DoctorId == appointment.DoctorId
                 && a.Id != id
-                && a.Status != null
-                && a.Status.Name != "Cancelled"
+                && a.AppointmentStatusId != cancelledStatusId
                 && a.ScheduledStart < request.NewScheduledEnd
                 && a.ScheduledEnd > request.NewScheduledStart);
 

@@ -154,4 +154,51 @@ public class PatientsControllerTests
         var response = Assert.IsType<ApiResponse<PatientResponse>>(createdResult.Value);
         Assert.Equal(201, createdResult.StatusCode);
     }
+
+    [Fact]
+    public async Task GetDashboardStats_ExistingPatient_ReturnsOk()
+    {
+        var id = Guid.NewGuid();
+        var dashboard = new PatientDashboardResponse
+        {
+            TotalAppointments = 5,
+            UpcomingAppointments = 2,
+            RecentActivity = new List<RecentActivityResponse>
+            {
+                new()
+                {
+                    AppointmentId = Guid.NewGuid(),
+                    DoctorName = "Dr. Smith",
+                    Status = "Confirmed",
+                    ScheduledStart = DateTime.UtcNow.AddDays(1),
+                    Type = "Appointment"
+                }
+            }
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetDashboardStatsAsync(id))
+            .ReturnsAsync(dashboard);
+
+        var result = await _controller.GetDashboardStats(id);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<PatientDashboardResponse>>(okResult.Value);
+        Assert.Equal(5, response.Data.TotalAppointments);
+        Assert.Equal(2, response.Data.UpcomingAppointments);
+    }
+
+    [Fact]
+    public async Task GetDashboardStats_NonExistingPatient_ReturnsNotFound()
+    {
+        var id = Guid.NewGuid();
+
+        _patientServiceMock
+            .Setup(x => x.GetDashboardStatsAsync(id))
+            .ReturnsAsync((PatientDashboardResponse?)null);
+
+        var result = await _controller.GetDashboardStats(id);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
 }

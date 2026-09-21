@@ -5,6 +5,7 @@ using AIHealthcareAssistant.Application.Features.Doctors;
 using AIHealthcareAssistant.Application.Features.Specialties;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
@@ -245,6 +246,72 @@ public class DoctorsController : ControllerBase
         return Ok(ApiResponse<SpecialtyResponse>.Ok(
             result,
             "Specialty assigned successfully."));
+    }
+
+    /// <summary>
+    /// Gets doctor dashboard stats.
+    /// </summary>
+    [HttpGet("dashboard/stats")]
+    [ProducesResponseType(typeof(ApiResponse<DoctorDashboardResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<DoctorDashboardResponse>>> GetDashboardStats(Guid id)
+    {
+        var result = await _doctorService.GetDashboardStatsAsync(id);
+
+        if (result == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Doctor dashboard stats were not found."));
+
+        return Ok(ApiResponse<DoctorDashboardResponse>.Ok(
+            result,
+            "Doctor dashboard stats retrieved successfully."));
+    }
+
+    /// <summary>
+    /// Gets doctor appointments by doctor ID for a specific date.
+    /// </summary>
+    [HttpGet("{id:guid}/appointments")]
+    [ProducesResponseType(typeof(ApiResponse<List<DoctorAppointmentResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<List<DoctorAppointmentResponse>>>> GetAppointmentsByDoctor(
+        Guid id,
+        [FromQuery] string date = "today")
+    {
+        var parsedDate = date == "today" ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(date);
+        var result = await _doctorService.GetDoctorAppointmentsAsync(id, parsedDate);
+
+        return Ok(ApiResponse<List<DoctorAppointmentResponse>>.Ok(
+            result,
+            "Doctor appointments retrieved successfully."));
+    }
+
+    /// <summary>
+    /// Updates doctor profile information.
+    /// </summary>
+    [HttpPatch("profile")]
+    [Authorize(Roles = "Doctor,Admin")]
+    [ProducesResponseType(typeof(ApiResponse<DoctorResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    public async Task<ActionResult<ApiResponse<DoctorResponse>>> UpdateProfile(
+        [FromBody] UpdateDoctorRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
+        var doctor = await _doctorService.GetByUserIdAsync(userId);
+
+        if (doctor == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Doctor profile was not found."));
+
+        var result = await _doctorService.UpdateAsync(doctor.Id, request);
+
+        return Ok(ApiResponse<DoctorResponse>.Ok(
+            result,
+            "Doctor profile updated successfully."));
     }
 
     /// <summary>

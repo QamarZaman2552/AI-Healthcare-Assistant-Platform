@@ -1,6 +1,7 @@
 ﻿using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Ai;
+using AIHealthcareAssistant.Application.Features.Patients;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -13,13 +14,16 @@ namespace AIHealthcareAssistant.API.Controllers;
 public class AiController : ControllerBase
 {
     private readonly IAIService _aiService;
+    private readonly IPatientService _patientService;
     private readonly ILogger<AiController> _logger;
 
     public AiController(
         IAIService aiService,
+        IPatientService patientService,
         ILogger<AiController> logger)
     {
         _aiService = aiService;
+        _patientService = patientService;
         _logger = logger;
     }
 
@@ -38,6 +42,7 @@ public class AiController : ControllerBase
     {
         try
         {
+<<<<<<< HEAD
           
             if (request.PatientId == Guid.Empty)
             {
@@ -47,6 +52,14 @@ public class AiController : ControllerBase
                     request.PatientId = userId;
                 }
             }
+=======
+            var patientId = await GetPatientIdFromTokenAsync();
+            request.PatientId = patientId;
+
+            var result = await _aiService.ChatAsync(
+                request,
+                cancellationToken);
+>>>>>>> origin/develop
 
             var result = await _aiService.ChatAsync(request, cancellationToken);
             return Ok(result);
@@ -97,6 +110,9 @@ public class AiController : ControllerBase
     {
         try
         {
+            var patientId = await GetPatientIdFromTokenAsync();
+            request.PatientId = patientId;
+
             var result = await _aiService.SymptomCheckAsync(
                 request,
                 cancellationToken);
@@ -131,6 +147,78 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
+    /// Gets all conversations for the authenticated patient.
+    /// </summary>
+    [HttpGet("conversations/patient/{id:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<List<ConversationResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<List<ConversationResponse>>>> GetConversationsByPatient(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await _aiService.GetConversationsByPatientAsync(id, cancellationToken);
+
+        return Ok(ApiResponse<List<ConversationResponse>>.Ok(
+            result,
+            "Conversations retrieved successfully."));
+    }
+
+    /// <summary>
+    /// Gets a specific conversation with all messages.
+    /// </summary>
+    [HttpGet("conversations/{id:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<ConversationDetailResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    public async Task<ActionResult<ApiResponse<ConversationDetailResponse>>> GetConversation(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _aiService.GetConversationByIdAsync(id, cancellationToken);
+
+            return Ok(ApiResponse<ConversationDetailResponse>.Ok(
+                result,
+                "Conversation retrieved successfully."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiErrorResponse.Error(ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Creates a new conversation for a patient.
+    /// </summary>
+    [HttpPost("conversations")]
+    [ProducesResponseType(typeof(ApiResponse<ConversationResponse>), 201)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
+    public async Task<ActionResult<ApiResponse<ConversationResponse>>> CreateConversation(
+        [FromBody] CreateConversationRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _aiService.CreateConversationAsync(request, cancellationToken);
+
+            return CreatedAtAction(
+                nameof(GetConversation),
+                new { id = result.Id },
+                ApiResponse<ConversationResponse>.Ok(
+                    result,
+                    "Conversation created successfully."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiErrorResponse.Error(ex.Message));
+        }
+    }
+
+    /// <summary>
     /// Checks whether the AI provider is available.
     /// </summary>
     [HttpGet("health")]
@@ -147,17 +235,24 @@ public class AiController : ControllerBase
         {
             return StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
-                new
-                {
-                    status = "unhealthy",
-                    service = "AI"
-                });
+                ApiErrorResponse.Error("AI service is currently unavailable."));
         }
 
-        return Ok(new
-        {
-            status = "healthy",
-            service = "AI"
-        });
+        return Ok(ApiResponse<object>.Ok(
+            new { status = "healthy", service = "AI" },
+            "AI service is healthy."));
+    }
+
+    private async Task<Guid> GetPatientIdFromTokenAsync()
+    {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            throw new ArgumentException("User ID not found in token or is invalid");
+
+        var patient = await _patientService.GetByUserIdAsync(userId);
+        if (patient == null)
+            throw new KeyNotFoundException("Patient not found for the authenticated user");
+
+        return patient.Id;
     }
 }

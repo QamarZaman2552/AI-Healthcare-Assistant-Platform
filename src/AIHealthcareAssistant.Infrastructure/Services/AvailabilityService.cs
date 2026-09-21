@@ -73,6 +73,16 @@ public class AvailabilityService : IAvailabilityService
             throw new InvalidOperationException(
                 "End time must be after start time");
 
+        var existing = await _context.DoctorAvailabilities
+            .FirstOrDefaultAsync(a => a.DoctorId == availability.DoctorId
+                && a.Id != id
+                && a.DayOfWeek == request.DayOfWeek
+                && a.StartTime < request.EndTime
+                && a.EndTime > request.StartTime);
+
+        if (existing != null)
+            throw new InvalidOperationException("Availability overlaps with existing schedule");
+
         availability.DayOfWeek = request.DayOfWeek;
         availability.StartTime = request.StartTime;
         availability.EndTime = request.EndTime;
@@ -140,11 +150,19 @@ public class AvailabilityService : IAvailabilityService
                 && (a.EffectiveTo == null || a.EffectiveTo >= date))
             .ToListAsync();
 
+        var startOfDay = date.ToDateTime(TimeOnly.MinValue);
+        var endOfDay = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+        var cancelledStatus = await _context.AppointmentStatuses
+            .FirstOrDefaultAsync(s => s.Name == "Cancelled");
+
+        var cancelledStatusId = cancelledStatus?.Id ?? Guid.Empty;
+
         var bookedAppointments = await _context.Appointments
             .Where(a => a.DoctorId == doctorId
-                && a.ScheduledStart.Date == date.ToDateTime(TimeOnly.MinValue)
-                && a.Status != null
-                && a.Status.Name != "Cancelled")
+                && a.ScheduledStart >= startOfDay
+                && a.ScheduledStart < endOfDay
+                && a.AppointmentStatusId != cancelledStatusId)
             .ToListAsync();
 
         var slots = new List<TimeSlotResponse>();
