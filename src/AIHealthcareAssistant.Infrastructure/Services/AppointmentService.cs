@@ -240,6 +240,7 @@ public class AppointmentService : IAppointmentService
         if (request.NewScheduledEnd <= request.NewScheduledStart)
             throw new InvalidOperationException("End time must be after start time");
 
+    
         var hasConflict = await _context.Appointments
             .AnyAsync(a => a.DoctorId == appointment.DoctorId
                 && a.Id != id
@@ -250,6 +251,31 @@ public class AppointmentService : IAppointmentService
 
         if (hasConflict)
             throw new InvalidOperationException("Doctor is not available at the new time slot");
+
+     
+        var hasAvailability = await _context.DoctorAvailabilities
+            .AnyAsync(a => a.DoctorId == appointment.DoctorId
+                && a.DayOfWeek == request.NewScheduledStart.DayOfWeek
+                && a.IsActive
+                && a.StartTime <= TimeOnly.FromDateTime(request.NewScheduledStart)
+                && a.EndTime >= TimeOnly.FromDateTime(request.NewScheduledEnd)
+                && (a.EffectiveFrom == null || a.EffectiveFrom <= DateOnly.FromDateTime(request.NewScheduledStart))
+                && (a.EffectiveTo == null || a.EffectiveTo >= DateOnly.FromDateTime(request.NewScheduledStart)));
+
+        if (!hasAvailability)
+            throw new InvalidOperationException("Doctor has no active availability schedule at the new time slot");
+
+      
+        var patientHasConflict = await _context.Appointments
+            .AnyAsync(a => a.PatientId == appointment.PatientId
+                && a.Id != id
+                && a.Status != null
+                && a.Status.Name != "Cancelled"
+                && a.ScheduledStart < request.NewScheduledEnd
+                && a.ScheduledEnd > request.NewScheduledStart);
+
+        if (patientHasConflict)
+            throw new InvalidOperationException("Patient already has another appointment at this time");
 
         appointment.ScheduledStart = request.NewScheduledStart;
         appointment.ScheduledEnd = request.NewScheduledEnd;
@@ -302,7 +328,6 @@ public class AppointmentService : IAppointmentService
             .Include(a => a.Conversation)
             .Where(a => a.DoctorId == doctorId);
 
-      
         if (!string.IsNullOrWhiteSpace(status))
         {
             query = query.Where(a => a.Status != null && a.Status.Name == status);
