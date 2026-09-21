@@ -18,4 +18,8 @@ public class CreateAppointmentRequest
 
     [MaxLength(2000, ErrorMessage = "Notes cannot exceed 2000 characters.")]
     public string? Notes { get; set; }
+
+    public Guid? PatientIntakeId { get; set; }
+
+    public Guid? AIConversationId { get; set; }
 }

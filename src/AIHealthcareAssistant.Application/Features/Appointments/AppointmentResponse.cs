@@ -15,4 +15,11 @@ public class AppointmentResponse
     public string? CancellationReason { get; set; }
     public DateTime? CancelledAt { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    public Guid? PatientIntakeId { get; set; }
+    public string? ChiefComplaint { get; set; }
+    public string? Symptoms { get; set; }
+
+    public Guid? AIConversationId { get; set; }
+    public string? AISummary { get; set; }
 }

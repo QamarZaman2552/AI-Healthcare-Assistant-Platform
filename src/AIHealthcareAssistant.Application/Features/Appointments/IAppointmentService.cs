@@ -9,4 +9,6 @@ public interface IAppointmentService
     Task<AppointmentResponse> CancelAsync(Guid id, string? cancellationReason);
     Task<AppointmentResponse> RescheduleAsync(Guid id, RescheduleAppointmentRequest request);
     Task<AppointmentResponse> UpdateStatusAsync(Guid id, string status);
+
+    Task<List<AppointmentResponse>> GetDoctorDashboardAppointmentsAsync( Guid doctorId,string? status = null,DateTime? date = null);
 }

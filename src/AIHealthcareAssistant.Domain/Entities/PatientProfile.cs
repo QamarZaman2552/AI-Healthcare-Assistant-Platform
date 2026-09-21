@@ -30,4 +30,7 @@ public class PatientProfile : AuditableEntity
     public string? Allergies { get; set; }
     public string? ChronicConditions { get; set; }
     public string? CurrentMedications { get; set; }
+
+    public string? MedicalHistory { get; set; }
 }
+
