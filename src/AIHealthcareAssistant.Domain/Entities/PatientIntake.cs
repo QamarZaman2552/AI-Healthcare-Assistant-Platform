@@ -13,6 +13,7 @@ public class PatientIntake : AuditableEntity
     public Guid PatientId { get; set; }
     public Patient Patient { get; set; } = null!;
 
+
     public Guid? AppointmentId { get; set; }
     public Appointment? Appointment { get; set; }
 
@@ -24,6 +25,7 @@ public class PatientIntake : AuditableEntity
 
     public string ChiefComplaint { get; set; } = string.Empty;
     public string? SymptomsDescription { get; set; }
+    public string Symptoms => SymptomsDescription ?? ChiefComplaint;
     public string? SymptomOnset { get; set; }
     public int? PainLevel { get; set; }
     public decimal? TemperatureCelsius { get; set; }

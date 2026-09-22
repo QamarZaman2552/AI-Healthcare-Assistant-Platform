@@ -2,6 +2,9 @@ using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Domain.Common;
 using AIHealthcareAssistant.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AIHealthcareAssistant.Infrastructure.Persistence;
 
@@ -24,7 +27,19 @@ public class AppDbContext : DbContext, IUnitOfWork
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
 
+    public override int SaveChanges()
+    {
+        UpdateAuditEntities();
+        return base.SaveChanges();
+    }
+
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        UpdateAuditEntities();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void UpdateAuditEntities()
     {
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
@@ -38,13 +53,11 @@ public class AppDbContext : DbContext, IUnitOfWork
                     break;
             }
         }
-
-        return base.SaveChangesAsync(cancellationToken);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

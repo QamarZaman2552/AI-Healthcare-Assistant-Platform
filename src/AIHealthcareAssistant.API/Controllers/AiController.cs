@@ -28,7 +28,7 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Sends a message to the AI healthcare assistant.
+    /// Sends a message to the AI healthcare assistant with automatic patient context.
     /// </summary>
     [HttpPost("chat")]
     [ProducesResponseType(typeof(AIChatResponseDto), StatusCodes.Status200OK)]
@@ -42,13 +42,26 @@ public class AiController : ControllerBase
     {
         try
         {
+<<<<<<< HEAD
+          
+            if (request.PatientId == Guid.Empty)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (Guid.TryParse(userIdClaim, out var userId))
+                {
+                    request.PatientId = userId;
+                }
+            }
+=======
             var patientId = await GetPatientIdFromTokenAsync();
             request.PatientId = patientId;
 
             var result = await _aiService.ChatAsync(
                 request,
                 cancellationToken);
+>>>>>>> origin/develop
 
+            var result = await _aiService.ChatAsync(request, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)
