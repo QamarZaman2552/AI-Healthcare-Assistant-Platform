@@ -96,7 +96,7 @@ public sealed class AIService : IAIService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         // Dynamic Context Injection
-        var patientContext = await BuildPatientContextAsync(request.PatientId, cancellationToken);
+        var patientContext = await BuildPatientContextAsync(patientId, cancellationToken);
 
         var providerMessages = new List<AIProviderMessage>
         {
@@ -190,11 +190,8 @@ public sealed class AIService : IAIService
         if (string.IsNullOrWhiteSpace(request.Symptoms))
             throw new ArgumentException("Symptoms are required.");
 
-<<<<<<< HEAD
-        var patientContext = await BuildPatientContextAsync(request.PatientId, cancellationToken);
-=======
         var patientId = request.PatientId.Value;
->>>>>>> origin/develop
+        var patientContext = await BuildPatientContextAsync(patientId, cancellationToken);
 
         var prompt = $"""
             You are a healthcare symptom assessment assistant.
