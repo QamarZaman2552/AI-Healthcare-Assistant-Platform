@@ -39,6 +39,7 @@ public class AdminControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<AdminDashboardResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Equal(10, response.Data.TotalPatients);
     }
 
@@ -58,6 +59,7 @@ public class AdminControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<List<UserResponse>>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Single(response.Data);
     }
 
@@ -81,6 +83,7 @@ public class AdminControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<SystemStatusResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Equal("operational", response.Data.Status);
     }
 }

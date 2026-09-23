@@ -55,7 +55,6 @@ public class AiControllerTests
     {
         var request = new AIChatRequestDto
         {
-            PatientId = Guid.NewGuid(),
             Message = "I have a headache"
         };
 
@@ -71,8 +70,13 @@ public class AiControllerTests
 
         var result = await _controller.Chat(request, CancellationToken.None);
 
+        _aiServiceMock.Verify(x => x.ChatAsync(
+            It.Is<AIChatRequestDto>(r => r.PatientId == _authenticatedPatient.Id),
+            It.IsAny<CancellationToken>()));
+
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var chatResponse = Assert.IsType<AIChatResponseDto>(okResult.Value);
+        Assert.NotNull(chatResponse);
         Assert.Equal(response.Message, chatResponse.Message);
     }
 
@@ -176,7 +180,6 @@ public class AiControllerTests
     {
         var request = new AISymptomCheckRequestDto
         {
-            PatientId = Guid.NewGuid(),
             Symptoms = "Headache, fever",
             Age = 30,
             Gender = "Male"
@@ -197,8 +200,14 @@ public class AiControllerTests
 
         var result = await _controller.SymptomCheck(request, CancellationToken.None);
 
+        _aiServiceMock.Verify(x => x.SymptomCheckAsync(
+            It.Is<AISymptomCheckRequestDto>(r => r.PatientId == _authenticatedPatient.Id),
+            It.IsAny<CancellationToken>()));
+
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<AISymptomCheckResponseDto>(okResult.Value);
+        var symptomResponse = Assert.IsType<AISymptomCheckResponseDto>(okResult.Value);
+        Assert.NotNull(symptomResponse);
+        Assert.Equal("Mild symptoms detected", symptomResponse.Summary);
     }
 
     [Fact]
@@ -292,10 +301,8 @@ public class AiControllerTests
     [Fact]
     public async Task CreateConversation_ValidRequest_ReturnsCreated()
     {
-        var patientId = Guid.NewGuid();
         var request = new CreateConversationRequest
         {
-            PatientId = patientId,
             Title = "New Chat"
         };
 
@@ -315,8 +322,13 @@ public class AiControllerTests
 
         var result = await _controller.CreateConversation(request, CancellationToken.None);
 
+        _aiServiceMock.Verify(x => x.CreateConversationAsync(
+            It.Is<CreateConversationRequest>(r => r.PatientId == _authenticatedPatient.Id),
+            It.IsAny<CancellationToken>()));
+
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
         var apiResponse = Assert.IsType<ApiResponse<ConversationResponse>>(createdResult.Value);
+        Assert.NotNull(apiResponse.Data);
         Assert.Equal("New Chat", apiResponse.Data.Title);
     }
 }

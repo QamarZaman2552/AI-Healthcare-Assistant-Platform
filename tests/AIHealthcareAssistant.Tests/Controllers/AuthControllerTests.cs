@@ -1,8 +1,15 @@
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 using AIHealthcareAssistant.API.Controllers;
+using AIHealthcareAssistant.API.Middleware;
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Auth;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Xunit;
 
 namespace AIHealthcareAssistant.Tests.Controllers;
 
@@ -50,7 +57,7 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task Register_DuplicateEmail_ReturnsError()
+    public async Task Register_DuplicateEmail_ReturnsConflictViaMiddleware()
     {
         var request = new RegisterRequest
         {
@@ -64,10 +71,18 @@ public class AuthControllerTests
             .Setup(x => x.RegisterAsync(request))
             .ThrowsAsync(new InvalidOperationException("Email already exists"));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _controller.Register(request));
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
 
-        Assert.Equal("Email already exists", ex.Message);
+        await ExceptionHandlingMiddleware.HandleExceptionAsync(
+            httpContext, new InvalidOperationException("Email already exists"));
+
+        Assert.Equal((int)HttpStatusCode.Conflict, httpContext.Response.StatusCode);
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var body = await reader.ReadToEndAsync();
+        Assert.Contains("Email already exists", body);
     }
 
     [Fact]
@@ -100,7 +115,7 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task Login_InvalidCredentials_ReturnsError()
+    public async Task Login_InvalidCredentials_ReturnsUnauthorizedViaMiddleware()
     {
         var request = new LoginRequest
         {
@@ -112,9 +127,17 @@ public class AuthControllerTests
             .Setup(x => x.LoginAsync(request))
             .ThrowsAsync(new UnauthorizedAccessException("Invalid credentials"));
 
-        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _controller.Login(request));
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
 
-        Assert.Equal("Invalid credentials", ex.Message);
+        await ExceptionHandlingMiddleware.HandleExceptionAsync(
+            httpContext, new UnauthorizedAccessException("Invalid credentials"));
+
+        Assert.Equal((int)HttpStatusCode.Unauthorized, httpContext.Response.StatusCode);
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var body = await reader.ReadToEndAsync();
+        Assert.Contains("Invalid credentials", body);
     }
 }

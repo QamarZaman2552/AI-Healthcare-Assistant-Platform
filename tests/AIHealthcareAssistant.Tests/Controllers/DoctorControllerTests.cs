@@ -62,6 +62,7 @@ public class DoctorControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<DoctorDashboardResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Equal(10, response.Data.TotalAppointments);
     }
 
@@ -111,6 +112,7 @@ public class DoctorControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<List<DoctorAppointmentResponse>>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Single(response.Data);
     }
 
@@ -152,6 +154,7 @@ public class DoctorControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<DoctorResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Equal("Dr. Smith Updated", response.Data.FullName);
     }
 

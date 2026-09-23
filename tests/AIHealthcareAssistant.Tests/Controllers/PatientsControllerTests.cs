@@ -42,6 +42,7 @@ public class PatientsControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<List<PatientResponse>>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Single(response.Data);
     }
 
@@ -65,7 +66,8 @@ public class PatientsControllerTests
         var result = await _controller.GetById(id);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<ApiResponse<PatientResponse>>(okResult.Value);
+        var response = Assert.IsType<ApiResponse<PatientResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
     }
 
     [Fact]
@@ -104,7 +106,8 @@ public class PatientsControllerTests
         var result = await _controller.GetHistory(id);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<ApiResponse<PatientHistoryResponse>>(okResult.Value);
+        var response = Assert.IsType<ApiResponse<PatientHistoryResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
     }
 
     [Fact]
@@ -184,6 +187,7 @@ public class PatientsControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<PatientDashboardResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Equal(5, response.Data.TotalAppointments);
         Assert.Equal(2, response.Data.UpcomingAppointments);
     }

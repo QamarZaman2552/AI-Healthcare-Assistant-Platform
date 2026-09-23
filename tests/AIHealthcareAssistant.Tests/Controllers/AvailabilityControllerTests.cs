@@ -93,7 +93,8 @@ public class AvailabilityControllerTests
         var result = await _controller.GetById(id);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<ApiResponse<AvailabilityResponse>>(okResult.Value);
+        var response = Assert.IsType<ApiResponse<AvailabilityResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
     }
 
     [Fact]
@@ -141,7 +142,8 @@ public class AvailabilityControllerTests
         var result = await _controller.Create(request);
 
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.IsType<ApiResponse<AvailabilityResponse>>(createdResult.Value);
+        var apiResponse = Assert.IsType<ApiResponse<AvailabilityResponse>>(createdResult.Value);
+        Assert.NotNull(apiResponse.Data);
         Assert.Equal(201, createdResult.StatusCode);
     }
 
@@ -204,6 +206,28 @@ public class AvailabilityControllerTests
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<List<DoctorResponse>>>(okResult.Value);
+        Assert.NotNull(response.Data);
         Assert.Single(response.Data);
+    }
+
+    [Fact]
+    public async Task Create_Overlap_ThrowsInvalidOperationException()
+    {
+        var request = new CreateAvailabilityRequest
+        {
+            DoctorId = Guid.NewGuid(),
+            DayOfWeek = DayOfWeek.Monday,
+            StartTime = new TimeOnly(9, 0),
+            EndTime = new TimeOnly(17, 0),
+            SlotDurationMinutes = 30
+        };
+
+        _availabilityServiceMock
+            .Setup(x => x.CreateAsync(request))
+            .ThrowsAsync(new InvalidOperationException("Availability overlaps with existing schedule"));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.Create(request));
+        Assert.Contains("overlaps", ex.Message);
     }
 }

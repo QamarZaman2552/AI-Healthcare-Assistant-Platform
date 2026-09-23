@@ -64,7 +64,8 @@ public class AppointmentsControllerTests
         var result = await _controller.GetById(id);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
+        var response = Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
     }
 
     [Fact]
@@ -108,8 +109,9 @@ public class AppointmentsControllerTests
         var result = await _controller.GetByPatient(patientId);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var response = Assert.IsType<ApiResponse<List<AppointmentResponse>>>(okResult.Value);
-        Assert.Single(response.Data);
+        var apiResponse = Assert.IsType<ApiResponse<List<AppointmentResponse>>>(okResult.Value);
+        Assert.NotNull(apiResponse.Data);
+        Assert.Single(apiResponse.Data);
     }
 
     [Fact]
@@ -145,7 +147,8 @@ public class AppointmentsControllerTests
         var result = await _controller.Create(request);
 
         var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.IsType<ApiResponse<AppointmentResponse>>(createdResult.Value);
+        var apiResponse = Assert.IsType<ApiResponse<AppointmentResponse>>(createdResult.Value);
+        Assert.NotNull(apiResponse.Data);
         Assert.Equal(201, createdResult.StatusCode);
     }
 
@@ -194,7 +197,8 @@ public class AppointmentsControllerTests
             new CancelAppointmentRequest { CancellationReason = "Patient request" });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
+        var apiResponse = Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
+        Assert.NotNull(apiResponse.Data);
     }
 
     [Fact]
@@ -244,6 +248,66 @@ public class AppointmentsControllerTests
         var result = await _controller.Reschedule(id, request);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
+        var apiResponse = Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
+        Assert.NotNull(apiResponse.Data);
+    }
+
+    [Fact]
+    public async Task Cancel_AlreadyCancelled_ThrowsInvalidOperationException()
+    {
+        var id = Guid.NewGuid();
+
+        _appointmentServiceMock
+            .Setup(x => x.GetByIdAsync(id))
+            .ReturnsAsync(new AppointmentResponse { Id = id, Status = "Cancelled" });
+        _appointmentServiceMock
+            .Setup(x => x.CancelAsync(id, It.IsAny<string?>()))
+            .ThrowsAsync(new InvalidOperationException("Appointment is already cancelled"));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.Cancel(id, new CancelAppointmentRequest()));
+        Assert.Contains("already cancelled", ex.Message);
+    }
+
+    [Fact]
+    public async Task Reschedule_CancelledAppointment_ThrowsInvalidOperationException()
+    {
+        var id = Guid.NewGuid();
+
+        _appointmentServiceMock
+            .Setup(x => x.GetByIdAsync(id))
+            .ReturnsAsync(new AppointmentResponse { Id = id, Status = "Cancelled" });
+        _appointmentServiceMock
+            .Setup(x => x.RescheduleAsync(id, It.IsAny<RescheduleAppointmentRequest>()))
+            .ThrowsAsync(new InvalidOperationException("Cannot reschedule a cancelled appointment"));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.Reschedule(id, new RescheduleAppointmentRequest
+            {
+                NewScheduledStart = DateTime.UtcNow.AddDays(2),
+                NewScheduledEnd = DateTime.UtcNow.AddDays(2).AddHours(1)
+            }));
+        Assert.Contains("cancelled appointment", ex.Message);
+    }
+
+    [Fact]
+    public async Task Create_DoctorUnavailable_ThrowsInvalidOperationException()
+    {
+        var request = new CreateAppointmentRequest
+        {
+            PatientId = Guid.NewGuid(),
+            DoctorId = Guid.NewGuid(),
+            ScheduledStart = DateTime.UtcNow.AddDays(1),
+            ScheduledEnd = DateTime.UtcNow.AddDays(1).AddHours(1),
+            ReasonForVisit = "Checkup"
+        };
+
+        _appointmentServiceMock
+            .Setup(x => x.CreateAsync(request))
+            .ThrowsAsync(new InvalidOperationException("Doctor is not available at this time slot"));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _controller.Create(request));
+        Assert.Contains("not available", ex.Message);
     }
 }
