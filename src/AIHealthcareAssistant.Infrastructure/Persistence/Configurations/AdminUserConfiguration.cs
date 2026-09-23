@@ -17,6 +17,8 @@ public class AdminUserConfiguration : IEntityTypeConfiguration<AdminUser>
         builder.Property(x => x.CreatedBy).HasMaxLength(256);
         builder.Property(x => x.UpdatedBy).HasMaxLength(256);
 
-        builder.HasIndex(x => x.UserId).IsUnique();
+        builder.HasIndex(x => x.UserId)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
     }
 }

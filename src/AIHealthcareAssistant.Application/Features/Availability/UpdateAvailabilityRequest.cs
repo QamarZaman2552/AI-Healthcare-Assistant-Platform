@@ -3,6 +3,7 @@ namespace AIHealthcareAssistant.Application.Features.Availability;
 
 public class UpdateAvailabilityRequest
 {
+    [EnumDataType(typeof(DayOfWeek), ErrorMessage = "DayOfWeek must be a valid day.")]
     public DayOfWeek DayOfWeek { get; set; }
 
     [Required(ErrorMessage = "Start time is required.")]

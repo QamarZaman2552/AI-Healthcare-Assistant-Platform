@@ -5,13 +5,13 @@ public class UpdateDoctorRequest
 {
     [Required(ErrorMessage = "License number is required.")]
     [MinLength(2)]
-    [MaxLength(100)]
+    [MaxLength(64)]
     public string LicenseNumber { get ;set; } = string.Empty;
 
     [Range(0, 70)]
     public int YearsOfExperience { get; set; }
 
-    [MaxLength(3000)]
+    [MaxLength(2000)]
     public string? Biography { get; set; }
 
     [Range(0, 1000000)]
@@ -20,6 +20,6 @@ public class UpdateDoctorRequest
     [MaxLength(200)]
     public string? ClinicName { get; set; }
 
-    [MaxLength(500)]
+    [MaxLength(300)]
     public string? ClinicAddress { get; set; }
 }

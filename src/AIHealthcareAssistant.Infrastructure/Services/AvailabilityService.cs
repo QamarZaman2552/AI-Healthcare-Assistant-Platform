@@ -24,16 +24,19 @@ public class AvailabilityService : IAvailabilityService
             throw new KeyNotFoundException("Doctor not found");
 
         if (request.EndTime <= request.StartTime)
-            throw new InvalidOperationException("End time must be after start time");
+            throw new ArgumentException("End time must be after start time");
 
         if (request.SlotDurationMinutes <= 0)
-            throw new InvalidOperationException("Slot duration must be greater than 0");
+            throw new ArgumentException("Slot duration must be greater than 0");
 
         var existing = await _context.DoctorAvailabilities
             .FirstOrDefaultAsync(a => a.DoctorId == request.DoctorId
                 && a.DayOfWeek == request.DayOfWeek
+                && a.IsActive
                 && a.StartTime < request.EndTime
-                && a.EndTime > request.StartTime);
+                && a.EndTime > request.StartTime
+                && (!a.EffectiveFrom.HasValue || !request.EffectiveTo.HasValue || a.EffectiveFrom.Value <= request.EffectiveTo.Value)
+                && (!request.EffectiveFrom.HasValue || !a.EffectiveTo.HasValue || request.EffectiveFrom.Value <= a.EffectiveTo.Value));
 
         if (existing != null)
             throw new InvalidOperationException("Availability overlaps with existing schedule");
@@ -70,18 +73,26 @@ public class AvailabilityService : IAvailabilityService
             throw new KeyNotFoundException("Availability not found");
 
         if (request.EndTime <= request.StartTime)
-            throw new InvalidOperationException(
-                "End time must be after start time");
+            throw new ArgumentException("End time must be after start time");
 
-        var existing = await _context.DoctorAvailabilities
-            .FirstOrDefaultAsync(a => a.DoctorId == availability.DoctorId
-                && a.Id != id
-                && a.DayOfWeek == request.DayOfWeek
-                && a.StartTime < request.EndTime
-                && a.EndTime > request.StartTime);
+        if (request.SlotDurationMinutes <= 0)
+            throw new ArgumentException("Slot duration must be greater than 0");
 
-        if (existing != null)
-            throw new InvalidOperationException("Availability overlaps with existing schedule");
+        if (request.IsActive)
+        {
+            var existing = await _context.DoctorAvailabilities
+                .FirstOrDefaultAsync(a => a.DoctorId == availability.DoctorId
+                    && a.Id != id
+                    && a.DayOfWeek == request.DayOfWeek
+                    && a.IsActive
+                    && a.StartTime < request.EndTime
+                    && a.EndTime > request.StartTime
+                    && (!a.EffectiveFrom.HasValue || !request.EffectiveTo.HasValue || a.EffectiveFrom.Value <= request.EffectiveTo.Value)
+                    && (!request.EffectiveFrom.HasValue || !a.EffectiveTo.HasValue || request.EffectiveFrom.Value <= a.EffectiveTo.Value));
+
+            if (existing != null)
+                throw new InvalidOperationException("Availability overlaps with existing schedule");
+        }
 
         availability.DayOfWeek = request.DayOfWeek;
         availability.StartTime = request.StartTime;

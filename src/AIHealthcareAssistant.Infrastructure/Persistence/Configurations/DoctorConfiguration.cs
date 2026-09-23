@@ -21,8 +21,12 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
         builder.Property(x => x.CreatedBy).HasMaxLength(256);
         builder.Property(x => x.UpdatedBy).HasMaxLength(256);
 
-        builder.HasIndex(x => x.UserId).IsUnique();
-        builder.HasIndex(x => x.LicenseNumber).IsUnique();
+        builder.HasIndex(x => x.UserId)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
+        builder.HasIndex(x => x.LicenseNumber)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
         builder.HasIndex(x => new { x.IsActive, x.IsVerified });
 
         builder.HasMany(x => x.DoctorSpecialties)

@@ -21,14 +21,16 @@ public class DoctorService : IDoctorService
         if (string.IsNullOrWhiteSpace(request.LicenseNumber))
             throw new ArgumentException("License number is required");
 
+        var licenseNumber = request.LicenseNumber.Trim();
+
         var user = await _context.Users.FindAsync(request.UserId)
             ?? throw new KeyNotFoundException("User not found");
 
         if (user.Role != Domain.Enums.UserRole.Doctor)
             throw new ArgumentException("User does not have the Doctor role");
 
-        if (await _context.Doctors.AnyAsync(d => d.LicenseNumber == request.LicenseNumber))
-            throw new InvalidOperationException($"License number '{request.LicenseNumber}' is already registered");
+        if (await _context.Doctors.AnyAsync(d => d.LicenseNumber == licenseNumber))
+            throw new InvalidOperationException($"License number '{licenseNumber}' is already registered");
 
         var doctor = await _context.Doctors.FirstOrDefaultAsync(d => d.UserId == request.UserId);
         if (doctor == null)
@@ -41,7 +43,7 @@ public class DoctorService : IDoctorService
             throw new InvalidOperationException("A doctor profile already exists for this user");
         }
 
-        doctor.LicenseNumber = request.LicenseNumber.Trim();
+        doctor.LicenseNumber = licenseNumber;
         doctor.YearsOfExperience = request.YearsOfExperience;
         doctor.Biography = request.Biography;
         doctor.ConsultationFee = request.ConsultationFee;
@@ -58,13 +60,15 @@ public class DoctorService : IDoctorService
         if (string.IsNullOrWhiteSpace(request.LicenseNumber))
             throw new ArgumentException("License number is required");
 
+        var licenseNumber = request.LicenseNumber.Trim();
+
         var doctor = await _context.Doctors.FindAsync(id)
             ?? throw new KeyNotFoundException("Doctor not found");
 
-        if (await _context.Doctors.AnyAsync(d => d.Id != id && d.LicenseNumber == request.LicenseNumber))
-            throw new InvalidOperationException($"License number '{request.LicenseNumber}' is already registered");
+        if (await _context.Doctors.AnyAsync(d => d.Id != id && d.LicenseNumber == licenseNumber))
+            throw new InvalidOperationException($"License number '{licenseNumber}' is already registered");
 
-        doctor.LicenseNumber = request.LicenseNumber.Trim();
+        doctor.LicenseNumber = licenseNumber;
         doctor.YearsOfExperience = request.YearsOfExperience;
         doctor.Biography = request.Biography;
         doctor.ConsultationFee = request.ConsultationFee;

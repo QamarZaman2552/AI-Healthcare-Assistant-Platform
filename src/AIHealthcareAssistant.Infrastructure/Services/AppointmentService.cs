@@ -28,10 +28,10 @@ public class AppointmentService : IAppointmentService
             throw new KeyNotFoundException("Doctor not found");
 
         if (request.ScheduledStart <= DateTime.UtcNow)
-            throw new InvalidOperationException("Cannot book appointment in the past");
+            throw new ArgumentException("Cannot book appointment in the past");
 
         if (request.ScheduledEnd <= request.ScheduledStart)
-            throw new InvalidOperationException("End time must be after start time");
+            throw new ArgumentException("End time must be after start time");
 
         var pendingStatus = await _context.AppointmentStatuses
             .FirstOrDefaultAsync(s => s.Name == "Pending");
@@ -278,10 +278,10 @@ public class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Cannot reschedule a completed appointment");
 
         if (request.NewScheduledStart <= DateTime.UtcNow)
-            throw new InvalidOperationException("Cannot reschedule to a past date");
+            throw new ArgumentException("Cannot reschedule to a past date");
 
         if (request.NewScheduledEnd <= request.NewScheduledStart)
-            throw new InvalidOperationException("End time must be after start time");
+            throw new ArgumentException("End time must be after start time");
 
         var cancelledStatus = await _context.AppointmentStatuses
             .FirstOrDefaultAsync(s => s.Name == "Cancelled");

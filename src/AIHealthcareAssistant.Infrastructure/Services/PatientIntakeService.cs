@@ -90,6 +90,9 @@ public class PatientIntakeService : IPatientIntakeService
 
     public async Task<PatientIntakeResponse> UpdateStatusAsync(Guid id, IntakeStatus status)
     {
+        if (!Enum.IsDefined(status))
+            throw new ArgumentException($"Status '{status}' is not a valid intake status.");
+
         var intake = await _context.PatientIntakes.FindAsync(id)
             ?? throw new KeyNotFoundException("Patient intake not found");
 

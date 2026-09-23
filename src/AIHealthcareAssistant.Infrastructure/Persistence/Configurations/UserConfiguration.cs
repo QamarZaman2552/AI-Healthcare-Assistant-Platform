@@ -21,18 +21,20 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.CreatedBy).HasMaxLength(256);
         builder.Property(x => x.UpdatedBy).HasMaxLength(256);
 
-        builder.HasIndex(x => x.Email).IsUnique();
+        builder.HasIndex(x => x.Email)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
         builder.HasIndex(x => x.Role);
 
         builder.HasOne(x => x.Patient)
             .WithOne(x => x.User)
             .HasForeignKey<Patient>(x => x.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(x => x.Doctor)
             .WithOne(x => x.User)
             .HasForeignKey<Doctor>(x => x.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(x => x.AdminUser)
             .WithOne(x => x.User)

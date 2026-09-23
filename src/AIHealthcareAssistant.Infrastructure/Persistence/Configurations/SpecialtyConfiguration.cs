@@ -16,7 +16,9 @@ public class SpecialtyConfiguration : IEntityTypeConfiguration<Specialty>
         builder.Property(x => x.CreatedBy).HasMaxLength(256);
         builder.Property(x => x.UpdatedBy).HasMaxLength(256);
 
-        builder.HasIndex(x => x.Name).IsUnique();
+        builder.HasIndex(x => x.Name)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
 
         builder.HasMany(x => x.DoctorSpecialties)
             .WithOne(x => x.Specialty)

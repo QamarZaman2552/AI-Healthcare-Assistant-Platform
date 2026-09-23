@@ -31,10 +31,46 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         return entity;
     }
 
-    public Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
-        _dbSet.Update(entity);
-        return Task.CompletedTask;
+        var proposedEntry = _context.Entry(entity);
+
+        if (proposedEntry.State != EntityState.Detached)
+        {
+            proposedEntry.State = EntityState.Modified;
+            return;
+        }
+
+        var tracked = await _dbSet.FindAsync(new object[] { entity.Id }, cancellationToken);
+
+        if (tracked is null)
+        {
+            await _dbSet.AddAsync(entity, cancellationToken);
+            return;
+        }
+
+        var trackedEntry = _context.Entry(tracked);
+
+        foreach (var property in trackedEntry.Metadata.GetProperties())
+        {
+            var proposed = proposedEntry.Property(property.Name).CurrentValue;
+            var original = trackedEntry.Property(property.Name).OriginalValue;
+
+            if (Equals(proposed, original))
+                continue;
+
+            trackedEntry.Property(property.Name).CurrentValue = proposed;
+            trackedEntry.Property(property.Name).IsModified = true;
+        }
+
+        foreach (var navigation in trackedEntry.Metadata.GetNavigations())
+        {
+            var proposedValue = proposedEntry.Navigation(navigation.Name).CurrentValue;
+            if (proposedValue is not null)
+                trackedEntry.Navigation(navigation.Name).CurrentValue = proposedValue;
+        }
+
+        proposedEntry.State = EntityState.Detached;
     }
 
     public Task DeleteAsync(T entity, CancellationToken cancellationToken = default)

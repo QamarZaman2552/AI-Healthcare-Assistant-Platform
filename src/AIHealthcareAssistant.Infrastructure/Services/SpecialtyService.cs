@@ -19,13 +19,15 @@ public class SpecialtyService : ISpecialtyService
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new ArgumentException("Specialty name is required");
 
-        if (await _context.Specialties.AnyAsync(s => s.Name == request.Name))
-            throw new InvalidOperationException($"A specialty named '{request.Name}' already exists");
+        var name = request.Name.Trim();
+
+        if (await _context.Specialties.AnyAsync(s => s.Name == name))
+            throw new InvalidOperationException($"A specialty named '{name}' already exists");
 
         var specialty = new Specialty
         {
             Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
+            Name = name,
             Description = request.Description
         };
 
@@ -40,13 +42,15 @@ public class SpecialtyService : ISpecialtyService
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new ArgumentException("Specialty name is required");
 
+        var name = request.Name.Trim();
+
         var specialty = await _context.Specialties.FindAsync(id)
             ?? throw new KeyNotFoundException("Specialty not found");
 
-        if (await _context.Specialties.AnyAsync(s => s.Id != id && s.Name == request.Name))
-            throw new InvalidOperationException($"A specialty named '{request.Name}' already exists");
+        if (await _context.Specialties.AnyAsync(s => s.Id != id && s.Name == name))
+            throw new InvalidOperationException($"A specialty named '{name}' already exists");
 
-        specialty.Name = request.Name.Trim();
+        specialty.Name = name;
         specialty.Description = request.Description;
 
         await _context.SaveChangesAsync();

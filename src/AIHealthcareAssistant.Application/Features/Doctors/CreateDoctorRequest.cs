@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using AIHealthcareAssistant.Application.Common.Validation;
+
 namespace AIHealthcareAssistant.Application.Features.Doctors;
 
 /// <summary>
@@ -7,17 +9,18 @@ namespace AIHealthcareAssistant.Application.Features.Doctors;
 /// </summary>
 public class CreateDoctorRequest
 {
+    [NotEmptyGuid(ErrorMessage = "UserId is required.")]
     public Guid UserId { get; set; }
 
     [Required(ErrorMessage = "License number is required.")]
     [MinLength(2)]
-    [MaxLength(100)]
+    [MaxLength(64)]
     public string LicenseNumber { get; set; } = string.Empty;
 
     [Range(0, 70, ErrorMessage = "Years of experience must be between 0 and 70.")]
     public int YearsOfExperience { get; set; }
 
-    [MaxLength(3000)]
+    [MaxLength(2000)]
     public string? Biography { get; set; }
 
     [Range(0, 1000000, ErrorMessage = "Consultation fee must be between 0 and 1,000,000.")]
@@ -25,6 +28,6 @@ public class CreateDoctorRequest
 
     [MaxLength(200)]
     public string? ClinicName { get; set; }
-    [MaxLength(500)]
+    [MaxLength(300)]
     public string? ClinicAddress { get; set; }
 }

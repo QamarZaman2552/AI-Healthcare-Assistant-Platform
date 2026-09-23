@@ -1,9 +1,14 @@
 using System.ComponentModel.DataAnnotations;
+using AIHealthcareAssistant.Application.Common.Validation;
+
 namespace AIHealthcareAssistant.Application.Features.Availability;
 
 public class CreateAvailabilityRequest
 {
+    [NotEmptyGuid(ErrorMessage = "DoctorId is required.")]
     public Guid DoctorId { get; set; }
+
+    [EnumDataType(typeof(DayOfWeek), ErrorMessage = "DayOfWeek must be a valid day.")]
     public DayOfWeek DayOfWeek { get; set; }
 
     [Required(ErrorMessage = "Start time is required.")]

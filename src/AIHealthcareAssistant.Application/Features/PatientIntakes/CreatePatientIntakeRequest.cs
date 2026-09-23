@@ -1,8 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using AIHealthcareAssistant.Application.Common.Validation;
+
 namespace AIHealthcareAssistant.Application.Features.PatientIntakes;
 
 public class CreatePatientIntakeRequest
 {
+    [NotEmptyGuid(ErrorMessage = "PatientId is required.")]
     public Guid PatientId { get; set; }
     public Guid? AppointmentId { get; set; }
     public Guid? AIConversationId { get; set; }
@@ -10,10 +13,10 @@ public class CreatePatientIntakeRequest
 
     [Required(ErrorMessage = "Chief complaint is required.")]
     [MinLength(2)]
-    [MaxLength(1000)]
+    [MaxLength(500)]
     public string ChiefComplaint { get; set; } = string.Empty;
 
-    [MaxLength(4000)]
+    [MaxLength(2000)]
     public string? SymptomsDescription { get; set; }
 
     [MaxLength(200)]
@@ -23,23 +26,23 @@ public class CreatePatientIntakeRequest
     [Range(0, 10, ErrorMessage = "Pain level must be between 0 and 10.")]
     public int? PainLevel { get; set; }
 
-    [Range(25, 50, ErrorMessage = "Temperature must be between 25°C and 50°C.")]
+    [Range(25, 50, ErrorMessage = "Temperature must be between 25Â°C and 50Â°C.")]
     public decimal? TemperatureCelsius { get; set; }
 
-    [MaxLength(50)]
+    [MaxLength(16)]
     public string? BloodPressure { get; set; }
 
     [Range(20, 250, ErrorMessage = "Heart rate must be between 20 and 250 BPM.")]
 
     public int? HeartRateBpm { get; set; }
 
-    [MaxLength(2000)]
+    [MaxLength(1000)]
 
     public string? CurrentMedications { get; set; }
 
-    [MaxLength(3000)]
+    [MaxLength(1000)]
     public string? AdditionalNotes { get; set; }
 
-    [MaxLength(5000)]
+    [MaxLength(4000)]
     public string? AISummary { get; set; }
 }

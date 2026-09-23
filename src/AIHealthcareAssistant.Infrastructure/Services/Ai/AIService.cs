@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Data;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -76,24 +77,31 @@ public sealed class AIService : IAIService
                 cancellationToken);
         }
 
-        var nextSequence = conversation.Messages.Count == 0
-            ? 1
-            : conversation.Messages.Max(x => x.SequenceNumber) + 1;
-
-        var userMessage = new AIConversationMessage
+        await using (var sequenceTransaction = await _dbContext.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
         {
-            Id = Guid.NewGuid(),
-            AIConversationId = conversation.Id,
-            Role = MessageRole.User,
-            Content = request.Message,
-            SequenceNumber = nextSequence
-        };
+            var maxSequence = await _dbContext.AIConversationMessages
+                .Where(m => m.AIConversationId == conversation.Id)
+                .MaxAsync(m => (int?)m.SequenceNumber, cancellationToken);
 
-        await _dbContext.AIConversationMessages.AddAsync(
-            userMessage,
-            cancellationToken);
+            var nextSequence = (maxSequence ?? 0) + 1;
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            var userMessage = new AIConversationMessage
+            {
+                Id = Guid.NewGuid(),
+                AIConversationId = conversation.Id,
+                Role = MessageRole.User,
+                Content = request.Message,
+                SequenceNumber = nextSequence
+            };
+
+            await _dbContext.AIConversationMessages.AddAsync(
+                userMessage,
+                cancellationToken);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await sequenceTransaction.CommitAsync(cancellationToken);
+        }
 
         // Dynamic Context Injection
         var patientContext = await BuildPatientContextAsync(patientId, cancellationToken);
@@ -158,20 +166,29 @@ public sealed class AIService : IAIService
                 "AI provider returned an empty response.");
         }
 
-        var assistantMessage = new AIConversationMessage
+        await using (var assistantTransaction = await _dbContext.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
         {
-            Id = Guid.NewGuid(),
-            AIConversationId = conversation.Id,
-            Role = MessageRole.Assistant,
-            Content = aiMessage,
-            SequenceNumber = nextSequence + 1
-        };
+            var assistantMaxSequence = await _dbContext.AIConversationMessages
+                .Where(m => m.AIConversationId == conversation.Id)
+                .MaxAsync(m => (int?)m.SequenceNumber, cancellationToken);
 
-        await _dbContext.AIConversationMessages.AddAsync(
-            assistantMessage,
-            cancellationToken);
+            var assistantMessage = new AIConversationMessage
+            {
+                Id = Guid.NewGuid(),
+                AIConversationId = conversation.Id,
+                Role = MessageRole.Assistant,
+                Content = aiMessage,
+                SequenceNumber = (assistantMaxSequence ?? 0) + 1
+            };
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            await _dbContext.AIConversationMessages.AddAsync(
+                assistantMessage,
+                cancellationToken);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await assistantTransaction.CommitAsync(cancellationToken);
+        }
 
         return new AIChatResponseDto
         {

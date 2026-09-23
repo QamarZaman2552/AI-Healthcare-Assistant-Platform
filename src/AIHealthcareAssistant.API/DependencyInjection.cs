@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
 using AIHealthcareAssistant.API.Middleware;
+using AIHealthcareAssistant.API.Services;
+using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Common.Response;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
@@ -12,6 +14,9 @@ public static class DependencyInjection
     public static IServiceCollection AddApi(
         this IServiceCollection services)
     {
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
         services.AddControllers()
         .AddJsonOptions(options =>
         {

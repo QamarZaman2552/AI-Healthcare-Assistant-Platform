@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using AIHealthcareAssistant.Application.Common.Validation;
+
 namespace AIHealthcareAssistant.Application.Features.Ai;
 
 public class ConversationResponse
@@ -12,8 +15,12 @@ public class ConversationResponse
 
 public class CreateConversationRequest
 {
+    [NotEmptyGuid(ErrorMessage = "PatientId is required.")]
     public Guid PatientId { get; set; }
     public Guid? AppointmentId { get; set; }
+
+    [Required(ErrorMessage = "Title is required.")]
+    [MaxLength(200, ErrorMessage = "Title cannot exceed 200 characters.")]
     public string Title { get; set; } = string.Empty;
 }
 

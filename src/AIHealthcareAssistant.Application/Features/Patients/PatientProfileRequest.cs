@@ -9,9 +9,11 @@ public class PatientProfileRequest
     public string? MedicalRecordNumber { get; set; }
 
     public DateOnly? DateOfBirth { get; set; }
+
+    [EnumDataType(typeof(Gender), ErrorMessage = "Gender must be a valid value.")]
     public Gender Gender { get; set; } = Gender.Unspecified;
 
-    [MaxLength(20)]
+    [MaxLength(8)]
     public string? BloodGroup { get; set; }
 
     [Range(30, 300, ErrorMessage = "Height must be between 30 and 300 cm.")]
@@ -20,10 +22,10 @@ public class PatientProfileRequest
     [Range(1, 500, ErrorMessage = "Weight must be between 1 and 500 kg.")]
     public decimal? WeightKg { get; set; }
 
-    [MaxLength(300)]
+    [MaxLength(200)]
     public string? AddressLine1 { get; set; }
 
-    [MaxLength(300)]
+    [MaxLength(200)]
     public string? AddressLine2 { get; set; }
 
     [MaxLength(100)]
@@ -48,14 +50,14 @@ public class PatientProfileRequest
 
     public string? EmergencyContactPhone { get; set; }
 
-    [MaxLength(2000)]
+    [MaxLength(1000)]
 
 
     public string? Allergies { get; set; }
 
-    [MaxLength(2000)]
+    [MaxLength(1000)]
     public string? ChronicConditions { get; set; }
 
-    [MaxLength(2000)]
+    [MaxLength(1000)]
     public string? CurrentMedications { get; set; }
 }

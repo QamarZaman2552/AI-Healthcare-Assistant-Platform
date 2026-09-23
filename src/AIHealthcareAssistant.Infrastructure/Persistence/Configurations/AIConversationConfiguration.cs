@@ -21,7 +21,7 @@ public class AIConversationConfiguration : IEntityTypeConfiguration<AIConversati
         builder.HasIndex(x => x.PatientId);
         builder.HasIndex(x => x.AppointmentId)
             .IsUnique()
-            .HasFilter("[AppointmentId] IS NOT NULL");
+            .HasFilter("[AppointmentId] IS NOT NULL AND [IsDeleted] = 0");
 
         builder.HasMany(x => x.Messages)
             .WithOne(x => x.Conversation)

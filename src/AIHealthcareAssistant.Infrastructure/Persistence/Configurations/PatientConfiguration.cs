@@ -15,7 +15,9 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.Property(x => x.CreatedBy).HasMaxLength(256);
         builder.Property(x => x.UpdatedBy).HasMaxLength(256);
 
-        builder.HasIndex(x => x.UserId).IsUnique();
+        builder.HasIndex(x => x.UserId)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
         builder.HasIndex(x => x.MedicalRecordNumber)
             .IsUnique()
             .HasFilter("[MedicalRecordNumber] IS NOT NULL");
@@ -38,6 +40,6 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.HasMany(x => x.Conversations)
             .WithOne(x => x.Patient)
             .HasForeignKey(x => x.PatientId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

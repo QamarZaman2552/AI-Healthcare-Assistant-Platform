@@ -26,11 +26,11 @@ public class PatientIntakeConfiguration : IEntityTypeConfiguration<PatientIntake
 
         builder.HasIndex(x => x.AppointmentId)
             .IsUnique()
-            .HasFilter("[AppointmentId] IS NOT NULL");
+            .HasFilter("[AppointmentId] IS NOT NULL AND [IsDeleted] = 0");
 
         builder.HasIndex(x => x.AIConversationId)
             .IsUnique()
-            .HasFilter("[AIConversationId] IS NOT NULL");
+            .HasFilter("[AIConversationId] IS NOT NULL AND [IsDeleted] = 0");
 
         builder.HasIndex(x => x.PatientId);
 

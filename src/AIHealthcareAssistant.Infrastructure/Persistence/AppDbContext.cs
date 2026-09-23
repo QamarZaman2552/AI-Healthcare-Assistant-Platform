@@ -3,6 +3,7 @@ using AIHealthcareAssistant.Domain.Common;
 using AIHealthcareAssistant.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,7 +11,40 @@ namespace AIHealthcareAssistant.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IUnitOfWork
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private static readonly Type[] SoftDeletableTypes =
+    {
+        typeof(User),
+        typeof(Patient),
+        typeof(PatientProfile),
+        typeof(Doctor),
+        typeof(Specialty),
+        typeof(Appointment),
+        typeof(PatientIntake),
+        typeof(AIConversation),
+        typeof(AIConversationMessage),
+        typeof(Notification),
+        typeof(AdminUser),
+        typeof(DoctorAvailability)
+    };
+
+    private readonly ICurrentUserService? _currentUserService;
+    private readonly string? _actor;
+    private readonly bool _hasActor;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : this(options, null)
+    {
+    }
+
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        ICurrentUserService? currentUserService)
+        : base(options)
+    {
+        _currentUserService = currentUserService;
+        _actor = currentUserService?.Email ?? currentUserService?.UserId?.ToString();
+        _hasActor = !string.IsNullOrWhiteSpace(_actor);
+    }
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Patient> Patients => Set<Patient>();
@@ -41,15 +75,33 @@ public class AppDbContext : DbContext, IUnitOfWork
 
     private void UpdateAuditEntities()
     {
+        var now = DateTime.UtcNow;
+
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
             switch (entry.State)
             {
                 case EntityState.Added:
-                    entry.Entity.CreatedAt = DateTime.UtcNow;
+                    entry.Entity.CreatedAt = now;
+                    if (_hasActor && entry.Entity is AuditableEntity added)
+                        added.CreatedBy = _actor;
                     break;
+
                 case EntityState.Modified:
-                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                    entry.Entity.UpdatedAt = now;
+                    if (_hasActor && entry.Entity is AuditableEntity modified)
+                        modified.UpdatedBy = _actor;
+                    break;
+
+                case EntityState.Deleted:
+                    if (SoftDeletableTypes.Contains(entry.Entity.GetType()))
+                    {
+                        entry.State = EntityState.Modified;
+                        entry.Entity.IsDeleted = true;
+                        entry.Entity.UpdatedAt = now;
+                        if (_hasActor && entry.Entity is AuditableEntity softDeleted)
+                            softDeleted.UpdatedBy = _actor;
+                    }
                     break;
             }
         }
@@ -59,5 +111,24 @@ public class AppDbContext : DbContext, IUnitOfWork
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!SoftDeletableTypes.Contains(entityType.ClrType))
+                continue;
+
+            modelBuilder.Entity(entityType.ClrType)
+                .HasQueryFilter(BuildSoftDeleteFilter(entityType.ClrType));
+        }
+    }
+
+    private static LambdaExpression BuildSoftDeleteFilter(Type clrType)
+    {
+        var parameter = Expression.Parameter(clrType, "e");
+        var body = Expression.Equal(
+            Expression.Property(parameter, nameof(BaseEntity.IsDeleted)),
+            Expression.Constant(false));
+
+        return Expression.Lambda(body, parameter);
     }
 }
