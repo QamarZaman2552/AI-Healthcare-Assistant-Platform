@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
 
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<DatabaseSeeder>();
         services.AddScoped<IAvailabilityService, AvailabilityService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
         services.AddScoped<IDoctorService, DoctorService>();

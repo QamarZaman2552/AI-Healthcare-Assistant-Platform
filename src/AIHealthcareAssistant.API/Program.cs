@@ -1,6 +1,7 @@
 using AIHealthcareAssistant.API;
 using AIHealthcareAssistant.Infrastructure;
 using AIHealthcareAssistant.Infrastructure.Persistence;
+using AIHealthcareAssistant.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,8 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+    await seeder.SeedAsync();
 }
 
 app.UseExceptionHandling();
