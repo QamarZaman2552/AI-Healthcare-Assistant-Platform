@@ -19,6 +19,25 @@ public class PatientsController : ControllerBase
         _patientService = patientService;
     }
 
+    private Guid GetUserId()
+    {
+        var value = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(value) || !Guid.TryParse(value, out var userId))
+            throw new UnauthorizedAccessException("User ID not found in token.");
+
+        return userId;
+    }
+
+    private async Task<bool> CanAccessPatientAsync(Guid patientId)
+    {
+        if (User.IsInRole("Admin") || User.IsInRole("Doctor"))
+            return true;
+
+        var patient = await _patientService.GetByUserIdAsync(GetUserId());
+        return patient != null && patient.Id == patientId;
+    }
+
     /// <summary>
     /// Registers the current user as a patient.
     /// </summary>
@@ -47,8 +66,10 @@ public class PatientsController : ControllerBase
     /// Gets all patients.
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "Admin,Doctor")]
     [ProducesResponseType(typeof(ApiResponse<List<PatientResponse>>), 200)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
     public async Task<ActionResult<ApiResponse<List<PatientResponse>>>> GetAll()
     {
         var result = await _patientService.GetAllAsync();
@@ -125,12 +146,16 @@ public class PatientsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<PatientProfileResponse>), 201)]
     [ProducesResponseType(typeof(ApiErrorResponse), 400)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     [ProducesResponseType(typeof(ApiErrorResponse), 409)]
     public async Task<ActionResult<ApiResponse<PatientProfileResponse>>> CreateProfile(
         Guid id,
         [FromBody] PatientProfileRequest request)
     {
+        if (!await CanAccessPatientAsync(id))
+            return Forbid();
+
         var result = await _patientService.CreateProfileAsync(id, request);
 
         var response = ApiResponse<PatientProfileResponse>.Ok(
@@ -150,11 +175,15 @@ public class PatientsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<PatientProfileResponse>), 200)]
     [ProducesResponseType(typeof(ApiErrorResponse), 400)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     public async Task<ActionResult<ApiResponse<PatientProfileResponse>>> UpdateProfile(
         Guid id,
         [FromBody] PatientProfileRequest request)
     {
+        if (!await CanAccessPatientAsync(id))
+            return Forbid();
+
         var result = await _patientService.UpdateProfileAsync(id, request);
 
         return Ok(ApiResponse<PatientProfileResponse>.Ok(

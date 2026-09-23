@@ -19,6 +19,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>AIHealthcareAssistant-Platform-7c4f2a91</UserSecretsId>
   </PropertyGroup>
     
 	<PropertyGroup>

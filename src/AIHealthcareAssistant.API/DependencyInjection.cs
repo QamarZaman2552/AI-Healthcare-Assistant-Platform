@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json.Serialization;
 using AIHealthcareAssistant.API.Middleware;
 using AIHealthcareAssistant.Application.Common.Response;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,11 @@ public static class DependencyInjection
         this IServiceCollection services)
     {
         services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(
+                new JsonStringEnumConverter());
+        })
         .ConfigureApiBehaviorOptions(options =>
         {
             options.InvalidModelStateResponseFactory = context =>

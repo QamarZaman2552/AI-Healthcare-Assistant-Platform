@@ -15,12 +15,14 @@ public class DoctorControllerTests
     private readonly Mock<IDoctorService> _doctorServiceMock;
     private readonly Mock<ILogger<DoctorsController>> _loggerMock;
     private readonly DoctorsController _controller;
+    private readonly Guid _userId;
 
     public DoctorControllerTests()
     {
         _doctorServiceMock = new Mock<IDoctorService>();
         _loggerMock = new Mock<ILogger<DoctorsController>>();
         _controller = new DoctorsController(_doctorServiceMock.Object);
+        _userId = Guid.NewGuid();
 
         _controller.ControllerContext = new ControllerContext
         {
@@ -28,9 +30,9 @@ public class DoctorControllerTests
             {
                 User = new ClaimsPrincipal(new ClaimsIdentity(new[]
                 {
-                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+                    new Claim(ClaimTypes.NameIdentifier, _userId.ToString()),
                     new Claim(ClaimTypes.Role, "Doctor")
-                }))
+                }, "TestAuth"))
             }
         };
     }
@@ -49,6 +51,10 @@ public class DoctorControllerTests
         };
 
         _doctorServiceMock
+            .Setup(x => x.GetByUserIdAsync(_userId))
+            .ReturnsAsync(new DoctorResponse { Id = id, UserId = _userId });
+
+        _doctorServiceMock
             .Setup(x => x.GetDashboardStatsAsync(id))
             .ReturnsAsync(dashboard);
 
@@ -63,6 +69,10 @@ public class DoctorControllerTests
     public async Task GetDashboardStats_NonExistingDoctor_ReturnsNotFound()
     {
         var id = Guid.NewGuid();
+
+        _doctorServiceMock
+            .Setup(x => x.GetByUserIdAsync(_userId))
+            .ReturnsAsync(new DoctorResponse { Id = id, UserId = _userId });
 
         _doctorServiceMock
             .Setup(x => x.GetDashboardStatsAsync(id))
@@ -88,6 +98,10 @@ public class DoctorControllerTests
                 DurationMinutes = 30
             }
         };
+
+        _doctorServiceMock
+            .Setup(x => x.GetByUserIdAsync(_userId))
+            .ReturnsAsync(new DoctorResponse { Id = id, UserId = _userId });
 
         _doctorServiceMock
             .Setup(x => x.GetDoctorAppointmentsAsync(id, It.IsAny<DateOnly>()))

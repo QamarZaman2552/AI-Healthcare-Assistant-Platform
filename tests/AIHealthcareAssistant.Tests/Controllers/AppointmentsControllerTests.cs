@@ -1,20 +1,43 @@
 using AIHealthcareAssistant.API.Controllers;
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Appointments;
+using AIHealthcareAssistant.Application.Features.Doctors;
+using AIHealthcareAssistant.Application.Features.Patients;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.Tests.Controllers;
 
 public class AppointmentsControllerTests
 {
     private readonly Mock<IAppointmentService> _appointmentServiceMock;
+    private readonly Mock<IPatientService> _patientServiceMock;
+    private readonly Mock<IDoctorService> _doctorServiceMock;
     private readonly AppointmentsController _controller;
 
     public AppointmentsControllerTests()
     {
         _appointmentServiceMock = new Mock<IAppointmentService>();
-        _controller = new AppointmentsController(_appointmentServiceMock.Object);
+        _patientServiceMock = new Mock<IPatientService>();
+        _doctorServiceMock = new Mock<IDoctorService>();
+        _controller = new AppointmentsController(
+            _appointmentServiceMock.Object,
+            _patientServiceMock.Object,
+            _doctorServiceMock.Object);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+                    new Claim(ClaimTypes.Role, "Admin")
+                }, "TestAuth"))
+            }
+        };
     }
 
     [Fact]
@@ -130,12 +153,25 @@ public class AppointmentsControllerTests
     public async Task Cancel_ExistingAppointment_ReturnsOk()
     {
         var id = Guid.NewGuid();
-        var response = new AppointmentResponse
+        var existing = new AppointmentResponse
         {
             Id = id,
             PatientId = Guid.NewGuid(),
             PatientName = "John Doe",
             DoctorId = Guid.NewGuid(),
+            DoctorName = "Dr. Smith",
+            Status = "Scheduled",
+            ScheduledStart = DateTime.UtcNow.AddDays(1),
+            ScheduledEnd = DateTime.UtcNow.AddDays(1).AddHours(1),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var response = new AppointmentResponse
+        {
+            Id = id,
+            PatientId = existing.PatientId,
+            PatientName = "John Doe",
+            DoctorId = existing.DoctorId,
             DoctorName = "Dr. Smith",
             Status = "Cancelled",
             ScheduledStart = DateTime.UtcNow.AddDays(1),
@@ -146,10 +182,16 @@ public class AppointmentsControllerTests
         };
 
         _appointmentServiceMock
+            .Setup(x => x.GetByIdAsync(id))
+            .ReturnsAsync(existing);
+
+        _appointmentServiceMock
             .Setup(x => x.CancelAsync(id, It.IsAny<string?>()))
             .ReturnsAsync(response);
 
-        var result = await _controller.Cancel(id, "Patient request");
+        var result = await _controller.Cancel(
+            id,
+            new CancelAppointmentRequest { CancellationReason = "Patient request" });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         Assert.IsType<ApiResponse<AppointmentResponse>>(okResult.Value);
@@ -165,18 +207,35 @@ public class AppointmentsControllerTests
             NewScheduledEnd = DateTime.UtcNow.AddDays(2).AddHours(1)
         };
 
-        var response = new AppointmentResponse
+        var existing = new AppointmentResponse
         {
             Id = id,
             PatientId = Guid.NewGuid(),
             PatientName = "John Doe",
             DoctorId = Guid.NewGuid(),
             DoctorName = "Dr. Smith",
+            Status = "Scheduled",
+            ScheduledStart = DateTime.UtcNow.AddDays(1),
+            ScheduledEnd = DateTime.UtcNow.AddDays(1).AddHours(1),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var response = new AppointmentResponse
+        {
+            Id = id,
+            PatientId = existing.PatientId,
+            PatientName = "John Doe",
+            DoctorId = existing.DoctorId,
+            DoctorName = "Dr. Smith",
             Status = "Rescheduled",
             ScheduledStart = request.NewScheduledStart,
             ScheduledEnd = request.NewScheduledEnd,
             CreatedAt = DateTime.UtcNow
         };
+
+        _appointmentServiceMock
+            .Setup(x => x.GetByIdAsync(id))
+            .ReturnsAsync(existing);
 
         _appointmentServiceMock
             .Setup(x => x.RescheduleAsync(id, request))

@@ -21,6 +21,25 @@ public class DoctorsController : ControllerBase
         _doctorService = doctorService;
     }
 
+    private Guid GetUserId()
+    {
+        var value = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(value) || !Guid.TryParse(value, out var userId))
+            throw new UnauthorizedAccessException("User ID not found in token.");
+
+        return userId;
+    }
+
+    private async Task<bool> CanAccessDoctorAsync(Guid doctorId)
+    {
+        if (User.IsInRole("Admin"))
+            return true;
+
+        var doctor = await _doctorService.GetByUserIdAsync(GetUserId());
+        return doctor != null && doctor.Id == doctorId;
+    }
+
     /// <summary>
     /// Gets a paginated list of doctors.
     /// </summary>
@@ -252,11 +271,16 @@ public class DoctorsController : ControllerBase
     /// Gets doctor dashboard stats.
     /// </summary>
     [HttpGet("dashboard/stats")]
+    [Authorize(Roles = "Doctor,Admin")]
     [ProducesResponseType(typeof(ApiResponse<DoctorDashboardResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     public async Task<ActionResult<ApiResponse<DoctorDashboardResponse>>> GetDashboardStats(Guid id)
     {
+        if (!await CanAccessDoctorAsync(id))
+            return Forbid();
+
         var result = await _doctorService.GetDashboardStatsAsync(id);
 
         if (result == null)
@@ -272,14 +296,31 @@ public class DoctorsController : ControllerBase
     /// Gets doctor appointments by doctor ID for a specific date.
     /// </summary>
     [HttpGet("{id:guid}/appointments")]
+    [Authorize(Roles = "Doctor,Admin")]
     [ProducesResponseType(typeof(ApiResponse<List<DoctorAppointmentResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 403)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     public async Task<ActionResult<ApiResponse<List<DoctorAppointmentResponse>>>> GetAppointmentsByDoctor(
         Guid id,
         [FromQuery] string date = "today")
     {
-        var parsedDate = date == "today" ? DateOnly.FromDateTime(DateTime.UtcNow) : DateOnly.Parse(date);
+        if (!await CanAccessDoctorAsync(id))
+            return Forbid();
+
+        DateOnly parsedDate;
+
+        if (string.Equals(date, "today", StringComparison.OrdinalIgnoreCase))
+        {
+            parsedDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        }
+        else if (!DateOnly.TryParse(date, out parsedDate))
+        {
+            return BadRequest(ApiErrorResponse.Error(
+                "Invalid date format. Use yyyy-MM-dd or 'today'."));
+        }
+
         var result = await _doctorService.GetDoctorAppointmentsAsync(id, parsedDate);
 
         return Ok(ApiResponse<List<DoctorAppointmentResponse>>.Ok(

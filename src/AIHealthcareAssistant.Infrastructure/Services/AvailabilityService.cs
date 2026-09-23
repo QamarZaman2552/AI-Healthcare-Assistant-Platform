@@ -170,9 +170,12 @@ public class AvailabilityService : IAvailabilityService
         foreach (var availability in availabilities)
         {
             var current = availability.StartTime;
-            while (current.AddMinutes(availability.SlotDurationMinutes) <= availability.EndTime)
+            while (true)
             {
                 var slotEnd = current.AddMinutes(availability.SlotDurationMinutes);
+
+                if (slotEnd <= current || slotEnd > availability.EndTime)
+                    break;
 
                 var isBooked = bookedAppointments.Any(a =>
                     TimeOnly.FromDateTime(a.ScheduledStart) < slotEnd &&

@@ -17,6 +17,7 @@ public class AiControllerTests
     private readonly Mock<IPatientService> _patientServiceMock;
     private readonly Mock<ILogger<AiController>> _loggerMock;
     private readonly AiController _controller;
+    private readonly PatientResponse _authenticatedPatient;
 
     public AiControllerTests()
     {
@@ -25,6 +26,14 @@ public class AiControllerTests
         _loggerMock = new Mock<ILogger<AiController>>();
         _controller = new AiController(_aiServiceMock.Object, _patientServiceMock.Object, _loggerMock.Object);
 
+        _authenticatedPatient = new PatientResponse
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            FullName = "Test Patient",
+            Email = "test@test.com"
+        };
+
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
@@ -32,19 +41,13 @@ public class AiControllerTests
                 User = new ClaimsPrincipal(new ClaimsIdentity(new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
-                }))
+                }, "TestAuth"))
             }
         };
 
         _patientServiceMock
             .Setup(x => x.GetByUserIdAsync(It.IsAny<Guid>()))
-            .ReturnsAsync(new PatientResponse
-            {
-                Id = Guid.NewGuid(),
-                UserId = Guid.NewGuid(),
-                FullName = "Test Patient",
-                Email = "test@test.com"
-            });
+            .ReturnsAsync(_authenticatedPatient);
     }
 
     [Fact]
@@ -227,7 +230,7 @@ public class AiControllerTests
     [Fact]
     public async Task GetConversationsByPatient_ExistingPatient_ReturnsOk()
     {
-        var patientId = Guid.NewGuid();
+        var patientId = _authenticatedPatient.Id;
         var conversations = new List<ConversationResponse>
         {
             new()
@@ -259,6 +262,7 @@ public class AiControllerTests
         var conversation = new ConversationDetailResponse
         {
             Id = conversationId,
+            PatientId = _authenticatedPatient.Id,
             Title = "Test Conversation",
             Status = "Active",
             StartedAt = DateTime.UtcNow,

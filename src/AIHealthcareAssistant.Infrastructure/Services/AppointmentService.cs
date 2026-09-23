@@ -1,3 +1,4 @@
+using System.Data;
 using AIHealthcareAssistant.Application.Features.Appointments;
 using AIHealthcareAssistant.Domain.Entities;
 using AIHealthcareAssistant.Infrastructure.Persistence;
@@ -42,6 +43,9 @@ public class AppointmentService : IAppointmentService
 
         var cancelledStatusId = cancelledStatus?.Id ?? Guid.Empty;
 
+        await using var transaction = await _context.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable);
+
         var hasConflict = await _context.Appointments
             .AnyAsync(a => a.DoctorId == request.DoctorId
                 && a.AppointmentStatusId != cancelledStatusId
@@ -72,26 +76,50 @@ public class AppointmentService : IAppointmentService
         if (patientHasConflict)
             throw new InvalidOperationException("Patient already has an appointment at this time");
 
-        Guid? intakeId = request.PatientIntakeId;
-        if (!intakeId.HasValue)
+        PatientIntake? linkedIntake;
+        if (request.PatientIntakeId.HasValue)
         {
-            var latestIntake = await _context.PatientIntakes
-                .Where(i => i.PatientId == request.PatientId)
+            linkedIntake = await _context.PatientIntakes
+                .FirstOrDefaultAsync(i => i.Id == request.PatientIntakeId.Value);
+
+            if (linkedIntake == null)
+                throw new KeyNotFoundException("Patient intake was not found");
+
+            if (linkedIntake.PatientId != request.PatientId)
+                throw new ArgumentException("Patient intake does not belong to this patient");
+
+            if (linkedIntake.AppointmentId != null)
+                throw new InvalidOperationException("Patient intake is already linked to another appointment");
+        }
+        else
+        {
+            linkedIntake = await _context.PatientIntakes
+                .Where(i => i.PatientId == request.PatientId && i.AppointmentId == null)
                 .OrderByDescending(i => i.CreatedAt)
                 .FirstOrDefaultAsync();
-
-            intakeId = latestIntake?.Id;
         }
 
-        Guid? conversationId = request.AIConversationId;
-        if (!conversationId.HasValue)
+        AIConversation? linkedConversation;
+        if (request.AIConversationId.HasValue)
         {
-            var latestConversation = await _context.AIConversations
-                .Where(c => c.PatientId == request.PatientId)
+            linkedConversation = await _context.AIConversations
+                .FirstOrDefaultAsync(c => c.Id == request.AIConversationId.Value);
+
+            if (linkedConversation == null)
+                throw new KeyNotFoundException("AI conversation was not found");
+
+            if (linkedConversation.PatientId != request.PatientId)
+                throw new ArgumentException("AI conversation does not belong to this patient");
+
+            if (linkedConversation.AppointmentId != null)
+                throw new InvalidOperationException("AI conversation is already linked to another appointment");
+        }
+        else
+        {
+            linkedConversation = await _context.AIConversations
+                .Where(c => c.PatientId == request.PatientId && c.AppointmentId == null)
                 .OrderByDescending(c => c.CreatedAt)
                 .FirstOrDefaultAsync();
-
-            conversationId = latestConversation?.Id;
         }
 
         var appointment = new Appointment
@@ -105,13 +133,21 @@ public class AppointmentService : IAppointmentService
             ScheduledEnd = request.ScheduledEnd,
             ReasonForVisit = request.ReasonForVisit,
             Notes = request.Notes,
-            PatientIntakeId = intakeId,
-            AIConversationId = conversationId,
+            PatientIntakeId = linkedIntake?.Id,
+            AIConversationId = linkedConversation?.Id,
             CreatedAt = DateTime.UtcNow
         };
 
         _context.Appointments.Add(appointment);
+
+        if (linkedIntake != null)
+            linkedIntake.AppointmentId = appointment.Id;
+
+        if (linkedConversation != null)
+            linkedConversation.AppointmentId = appointment.Id;
+
         await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         var user = await _context.Users.FindAsync(patient.UserId);
 
@@ -191,6 +227,8 @@ public class AppointmentService : IAppointmentService
             .ThenInclude(p => p.User)
             .Include(a => a.Doctor)
             .ThenInclude(d => d.User)
+            .Include(a => a.Intake)
+            .Include(a => a.Conversation)
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (appointment == null)
@@ -226,6 +264,8 @@ public class AppointmentService : IAppointmentService
             .ThenInclude(p => p.User)
             .Include(a => a.Doctor)
             .ThenInclude(d => d.User)
+            .Include(a => a.Intake)
+            .Include(a => a.Conversation)
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (appointment == null)
@@ -247,6 +287,9 @@ public class AppointmentService : IAppointmentService
             .FirstOrDefaultAsync(s => s.Name == "Cancelled");
         var cancelledStatusId = cancelledStatus?.Id ?? Guid.Empty;
 
+        await using var transaction = await _context.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable);
+
         var hasConflict = await _context.Appointments
             .AnyAsync(a => a.DoctorId == appointment.DoctorId
                 && a.Id != id
@@ -257,7 +300,6 @@ public class AppointmentService : IAppointmentService
         if (hasConflict)
             throw new InvalidOperationException("Doctor is not available at the new time slot");
 
-     
         var hasAvailability = await _context.DoctorAvailabilities
             .AnyAsync(a => a.DoctorId == appointment.DoctorId
                 && a.DayOfWeek == request.NewScheduledStart.DayOfWeek
@@ -270,7 +312,6 @@ public class AppointmentService : IAppointmentService
         if (!hasAvailability)
             throw new InvalidOperationException("Doctor has no active availability schedule at the new time slot");
 
-      
         var patientHasConflict = await _context.Appointments
             .AnyAsync(a => a.PatientId == appointment.PatientId
                 && a.Id != id
@@ -286,6 +327,7 @@ public class AppointmentService : IAppointmentService
         appointment.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return MapToResponse(appointment);
     }
@@ -298,18 +340,43 @@ public class AppointmentService : IAppointmentService
             .ThenInclude(p => p.User)
             .Include(a => a.Doctor)
             .ThenInclude(d => d.User)
+            .Include(a => a.Intake)
+            .Include(a => a.Conversation)
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (appointment == null)
             throw new KeyNotFoundException("Appointment not found");
 
+        if (string.IsNullOrWhiteSpace(status))
+            throw new ArgumentException("Status is required.");
+
         var newStatus = await _context.AppointmentStatuses
             .FirstOrDefaultAsync(s => s.Name == status);
         if (newStatus == null)
-            throw new InvalidOperationException($"Status '{status}' not found");
+            throw new ArgumentException($"Status '{status}' not found");
+
+        var currentName = appointment.Status?.Name;
+
+        if (!string.Equals(currentName, newStatus.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.Equals(currentName, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Cannot change the status of a cancelled appointment. Please book a new appointment.");
+
+            if (string.Equals(currentName, "Completed", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Cannot change the status of a completed appointment.");
+        }
 
         appointment.AppointmentStatusId = newStatus.Id;
         appointment.Status = newStatus;
+
+        if (string.Equals(newStatus.Name, "Cancelled", StringComparison.OrdinalIgnoreCase)
+            && appointment.CancelledAt == null)
+        {
+            appointment.CancelledAt = DateTime.UtcNow;
+        }
+
         appointment.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -371,11 +438,11 @@ public class AppointmentService : IAppointmentService
             CancelledAt = appointment.CancelledAt,
             CreatedAt = appointment.CreatedAt,
 
-            PatientIntakeId = appointment.PatientIntakeId,
+            PatientIntakeId = appointment.Intake?.Id ?? appointment.PatientIntakeId,
             ChiefComplaint = appointment.Intake?.ChiefComplaint,
             Symptoms = appointment.Intake?.Symptoms,
 
-            AIConversationId = appointment.Conversation?.Id,
+            AIConversationId = appointment.Conversation?.Id ?? appointment.AIConversationId,
             AISummary = appointment.Conversation?.Summary
         };
     }

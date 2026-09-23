@@ -1,8 +1,11 @@
 ﻿
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Appointments;
+using AIHealthcareAssistant.Application.Features.Doctors;
+using AIHealthcareAssistant.Application.Features.Patients;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
@@ -12,10 +15,69 @@ namespace AIHealthcareAssistant.API.Controllers;
 public class AppointmentsController : ControllerBase
 {
     private readonly IAppointmentService _appointmentService;
+    private readonly IPatientService _patientService;
+    private readonly IDoctorService _doctorService;
 
-    public AppointmentsController(IAppointmentService appointmentService)
+    public AppointmentsController(
+        IAppointmentService appointmentService,
+        IPatientService patientService,
+        IDoctorService doctorService)
     {
         _appointmentService = appointmentService;
+        _patientService = patientService;
+        _doctorService = doctorService;
+    }
+
+    private Guid GetUserId()
+    {
+        var value = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(value) || !Guid.TryParse(value, out var userId))
+            throw new UnauthorizedAccessException("User ID not found in token.");
+
+        return userId;
+    }
+
+    private bool IsAdmin() => User.IsInRole("Admin");
+
+    private async Task<bool> CanAccessAppointmentAsync(
+        Guid patientId,
+        Guid doctorId)
+    {
+        if (IsAdmin())
+            return true;
+
+        if (User.IsInRole("Patient"))
+        {
+            var patient = await _patientService.GetByUserIdAsync(GetUserId());
+            return patient != null && patient.Id == patientId;
+        }
+
+        if (User.IsInRole("Doctor"))
+        {
+            var doctor = await _doctorService.GetByUserIdAsync(GetUserId());
+            return doctor != null && doctor.Id == doctorId;
+        }
+
+        return false;
+    }
+
+    private async Task<bool> CanAccessPatientAsync(Guid patientId)
+    {
+        if (IsAdmin() || User.IsInRole("Doctor"))
+            return true;
+
+        var patient = await _patientService.GetByUserIdAsync(GetUserId());
+        return patient != null && patient.Id == patientId;
+    }
+
+    private async Task<bool> CanAccessDoctorAsync(Guid doctorId)
+    {
+        if (IsAdmin())
+            return true;
+
+        var doctor = await _doctorService.GetByUserIdAsync(GetUserId());
+        return doctor != null && doctor.Id == doctorId;
     }
 
     /// <summary>
@@ -23,6 +85,7 @@ public class AppointmentsController : ControllerBase
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<AppointmentResponse>>> GetById(Guid id)
@@ -32,6 +95,9 @@ public class AppointmentsController : ControllerBase
         if (result == null)
             return NotFound(
                 ApiErrorResponse.Error("Appointment was not found."));
+
+        if (!await CanAccessAppointmentAsync(result.PatientId, result.DoctorId))
+            return Forbid();
 
         return Ok(
             ApiResponse<AppointmentResponse>.Ok(
@@ -44,10 +110,14 @@ public class AppointmentsController : ControllerBase
     /// </summary>
     [HttpGet("patient/{patientId:guid}")]
     [ProducesResponseType(typeof(ApiResponse<List<AppointmentResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<List<AppointmentResponse>>>> GetByPatient(
         Guid patientId)
     {
+        if (!await CanAccessPatientAsync(patientId))
+            return Forbid();
+
         var result = await _appointmentService.GetByPatientAsync(patientId);
 
         return Ok(
@@ -60,11 +130,16 @@ public class AppointmentsController : ControllerBase
     /// Gets all appointments for a doctor.
     /// </summary>
     [HttpGet("doctor/{doctorId:guid}")]
+    [Authorize(Roles = "Doctor,Admin")]
     [ProducesResponseType(typeof(ApiResponse<List<AppointmentResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<List<AppointmentResponse>>>> GetByDoctor(
         Guid doctorId)
     {
+        if (!await CanAccessDoctorAsync(doctorId))
+            return Forbid();
+
         var result = await _appointmentService.GetByDoctorAsync(doctorId);
 
         return Ok(
@@ -102,16 +177,26 @@ public class AppointmentsController : ControllerBase
     [HttpPut("{id:guid}/cancel")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ApiResponse<AppointmentResponse>>> Cancel(
         Guid id,
-        [FromQuery] string? cancellationReason)
+        [FromBody] CancelAppointmentRequest request)
     {
+        var appointment = await _appointmentService.GetByIdAsync(id);
+
+        if (appointment == null)
+            return NotFound(
+                ApiErrorResponse.Error("Appointment was not found."));
+
+        if (!await CanAccessAppointmentAsync(appointment.PatientId, appointment.DoctorId))
+            return Forbid();
+
         var result = await _appointmentService.CancelAsync(
             id,
-            cancellationReason);
+            request?.CancellationReason);
 
         return Ok(
             ApiResponse<AppointmentResponse>.Ok(
@@ -125,6 +210,7 @@ public class AppointmentsController : ControllerBase
     [HttpPut("{id:guid}/reschedule")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
@@ -132,6 +218,15 @@ public class AppointmentsController : ControllerBase
         Guid id,
         [FromBody] RescheduleAppointmentRequest request)
     {
+        var appointment = await _appointmentService.GetByIdAsync(id);
+
+        if (appointment == null)
+            return NotFound(
+                ApiErrorResponse.Error("Appointment was not found."));
+
+        if (!await CanAccessAppointmentAsync(appointment.PatientId, appointment.DoctorId))
+            return Forbid();
+
         var result = await _appointmentService.RescheduleAsync(
             id,
             request);
@@ -149,17 +244,26 @@ public class AppointmentsController : ControllerBase
     [Authorize(Roles = "Doctor,Admin")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ApiResponse<AppointmentResponse>>> UpdateStatus(
         Guid id,
-        [FromQuery] string status)
+        [FromBody] UpdateAppointmentStatusRequest request)
     {
+        var appointment = await _appointmentService.GetByIdAsync(id);
+
+        if (appointment == null)
+            return NotFound(
+                ApiErrorResponse.Error("Appointment was not found."));
+
+        if (!await CanAccessAppointmentAsync(appointment.PatientId, appointment.DoctorId))
+            return Forbid();
+
         var result = await _appointmentService.UpdateStatusAsync(
             id,
-            status);
+            request.Status);
 
         return Ok(
             ApiResponse<AppointmentResponse>.Ok(
@@ -174,11 +278,15 @@ public class AppointmentsController : ControllerBase
     [HttpGet("doctor/{doctorId:guid}/dashboard")]
     [Authorize(Roles = "Doctor,Admin")]
     [ProducesResponseType(typeof(ApiResponse<List<AppointmentResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<List<AppointmentResponse>>>> GetDoctorDashboardAppointments(
         Guid doctorId,
         [FromQuery] string? status,
         [FromQuery] DateTime? date)
     {
+        if (!await CanAccessDoctorAsync(doctorId))
+            return Forbid();
+
         var result = await _appointmentService.GetDoctorDashboardAppointmentsAsync(doctorId, status, date);
 
         return Ok(
@@ -187,4 +295,3 @@ public class AppointmentsController : ControllerBase
                 "Doctor dashboard appointments retrieved successfully."));
     }
 }
-

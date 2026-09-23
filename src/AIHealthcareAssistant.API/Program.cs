@@ -3,8 +3,11 @@ using AIHealthcareAssistant.Infrastructure;
 using AIHealthcareAssistant.Infrastructure.Persistence;
 using AIHealthcareAssistant.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApi();

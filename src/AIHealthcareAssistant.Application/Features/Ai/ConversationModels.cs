@@ -28,6 +28,7 @@ public class ConversationMessageResponse
 public class ConversationDetailResponse
 {
     public Guid Id { get; set; }
+    public Guid PatientId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime StartedAt { get; set; }

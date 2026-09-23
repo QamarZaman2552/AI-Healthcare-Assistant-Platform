@@ -16,6 +16,7 @@ public class AiController : ControllerBase
     private readonly IAIService _aiService;
     private readonly IPatientService _patientService;
     private readonly ILogger<AiController> _logger;
+    private PatientResponse? _authenticatedPatient;
 
     public AiController(
         IAIService aiService,
@@ -26,6 +27,8 @@ public class AiController : ControllerBase
         _patientService = patientService;
         _logger = logger;
     }
+
+    private bool IsAdmin() => User.IsInRole("Admin");
 
     /// <summary>
     /// Sends a message to the AI healthcare assistant with automatic patient context.
@@ -141,6 +144,14 @@ public class AiController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (!IsAdmin())
+        {
+            var patient = await GetAuthenticatedPatientAsync();
+
+            if (patient.Id != id)
+                return NotFound(ApiErrorResponse.Error("Conversations were not found."));
+        }
+
         var result = await _aiService.GetConversationsByPatientAsync(id, cancellationToken);
 
         return Ok(ApiResponse<List<ConversationResponse>>.Ok(
@@ -162,6 +173,14 @@ public class AiController : ControllerBase
         try
         {
             var result = await _aiService.GetConversationByIdAsync(id, cancellationToken);
+
+            if (!IsAdmin())
+            {
+                var patient = await GetAuthenticatedPatientAsync();
+
+                if (result.PatientId != patient.Id)
+                    return NotFound(ApiErrorResponse.Error("Conversation was not found."));
+            }
 
             return Ok(ApiResponse<ConversationDetailResponse>.Ok(
                 result,
@@ -187,6 +206,16 @@ public class AiController : ControllerBase
     {
         try
         {
+            if (!IsAdmin())
+            {
+                var patient = await GetAuthenticatedPatientAsync();
+                request.PatientId = patient.Id;
+            }
+            else if (request.PatientId == Guid.Empty)
+            {
+                return BadRequest(ApiErrorResponse.Error("PatientId is required."));
+            }
+
             var result = await _aiService.CreateConversationAsync(request, cancellationToken);
 
             return CreatedAtAction(
@@ -227,8 +256,11 @@ public class AiController : ControllerBase
             "AI service is healthy."));
     }
 
-    private async Task<Guid> GetPatientIdFromTokenAsync()
+    private async Task<PatientResponse> GetAuthenticatedPatientAsync()
     {
+        if (_authenticatedPatient != null)
+            return _authenticatedPatient;
+
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             throw new ArgumentException("User ID not found in token or is invalid");
@@ -237,6 +269,13 @@ public class AiController : ControllerBase
         if (patient == null)
             throw new KeyNotFoundException("Patient not found for the authenticated user");
 
+        _authenticatedPatient = patient;
+        return patient;
+    }
+
+    private async Task<Guid> GetPatientIdFromTokenAsync()
+    {
+        var patient = await GetAuthenticatedPatientAsync();
         return patient.Id;
     }
 }

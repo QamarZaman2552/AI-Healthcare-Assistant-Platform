@@ -251,7 +251,14 @@ public sealed class AIService : IAIService
         {
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
-                "");
+                "models");
+
+            if (!string.IsNullOrWhiteSpace(_settings.ApiKey))
+            {
+                request.Headers.TryAddWithoutValidation(
+                    "x-goog-api-key",
+                    _settings.ApiKey);
+            }
 
             using var response = await _httpClient.SendAsync(
                 request,
@@ -409,6 +416,13 @@ public sealed class AIService : IAIService
             "Emergency:",
             null);
 
+        var emergencyWord = emergency
+            .Trim()
+            .Split(
+                new[] { ' ', '\r', '\n', '\t', '.', ',', ';', ':', '!', '?' },
+                StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault() ?? string.Empty;
+
         return new AISymptomCheckResponseDto
         {
             Summary = summary,
@@ -416,7 +430,7 @@ public sealed class AIService : IAIService
             RecommendedAction = action,
             Urgency = urgency,
             RequiresEmergencyCare =
-                emergency.Contains(
+                emergencyWord.Equals(
                     "yes",
                     StringComparison.OrdinalIgnoreCase)
         };
@@ -483,6 +497,7 @@ public sealed class AIService : IAIService
         return new ConversationDetailResponse
         {
             Id = conversation.Id,
+            PatientId = conversation.PatientId,
             Title = conversation.Title,
             Status = conversation.Status.ToString(),
             StartedAt = conversation.StartedAt,

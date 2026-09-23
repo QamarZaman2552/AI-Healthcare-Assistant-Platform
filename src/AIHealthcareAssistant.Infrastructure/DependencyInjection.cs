@@ -44,7 +44,19 @@ public static class DependencyInjection
         services.AddScoped<IPatientIntakeService, PatientIntakeService>();
         services.AddScoped<IAdminService, AdminService>();
 
-        var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>()!;
+        var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>()
+            ?? throw new InvalidOperationException(
+                "JwtSettings configuration section is missing.");
+
+        if (string.IsNullOrWhiteSpace(jwtSettings.Key) || jwtSettings.Key.Length < 32)
+        {
+            throw new InvalidOperationException(
+                "JwtSettings:Key is missing or shorter than 32 characters. " +
+                "Set it with: dotnet user-secrets set \"JwtSettings:Key\" \"<random string, 64+ chars>\" " +
+                "--project src/AIHealthcareAssistant.API " +
+                "or via environment variable JwtSettings__Key. See LOCAL-SECRETS.txt.");
+        }
+
         var key = Encoding.UTF8.GetBytes(jwtSettings.Key);
 
         services.AddAuthentication(options =>
