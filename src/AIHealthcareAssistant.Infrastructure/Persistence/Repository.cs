@@ -33,44 +33,34 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
 
     public async Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
-        var proposedEntry = _context.Entry(entity);
+        var existing = await _dbSet.FindAsync(new object[] { entity.Id }, cancellationToken);
 
-        if (proposedEntry.State != EntityState.Detached)
-        {
-            proposedEntry.State = EntityState.Modified;
-            return;
-        }
-
-        var tracked = await _dbSet.FindAsync(new object[] { entity.Id }, cancellationToken);
-
-        if (tracked is null)
+        if (existing is null)
         {
             await _dbSet.AddAsync(entity, cancellationToken);
             return;
         }
 
-        var trackedEntry = _context.Entry(tracked);
+        var trackedEntry = _context.Entry(existing);
 
         foreach (var property in trackedEntry.Metadata.GetProperties())
         {
-            var proposed = proposedEntry.Property(property.Name).CurrentValue;
-            var original = trackedEntry.Property(property.Name).OriginalValue;
+            var proposedValue = _context.Entry(entity).Property(property.Name).CurrentValue;
+            var originalValue = trackedEntry.Property(property.Name).OriginalValue;
 
-            if (Equals(proposed, original))
+            if (Equals(proposedValue, originalValue))
                 continue;
 
-            trackedEntry.Property(property.Name).CurrentValue = proposed;
+            trackedEntry.Property(property.Name).CurrentValue = proposedValue;
             trackedEntry.Property(property.Name).IsModified = true;
         }
 
         foreach (var navigation in trackedEntry.Metadata.GetNavigations())
         {
-            var proposedValue = proposedEntry.Navigation(navigation.Name).CurrentValue;
+            var proposedValue = _context.Entry(entity).Navigation(navigation.Name).CurrentValue;
             if (proposedValue is not null)
                 trackedEntry.Navigation(navigation.Name).CurrentValue = proposedValue;
         }
-
-        proposedEntry.State = EntityState.Detached;
     }
 
     public Task DeleteAsync(T entity, CancellationToken cancellationToken = default)

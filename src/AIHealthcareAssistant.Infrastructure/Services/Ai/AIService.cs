@@ -101,6 +101,8 @@ public sealed class AIService : IAIService
 
             await _dbContext.SaveChangesAsync(cancellationToken);
             await sequenceTransaction.CommitAsync(cancellationToken);
+
+            conversation.Messages.Add(userMessage);
         }
 
         // Dynamic Context Injection
