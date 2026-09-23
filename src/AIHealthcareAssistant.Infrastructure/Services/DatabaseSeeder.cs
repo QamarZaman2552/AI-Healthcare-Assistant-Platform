@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using AIHealthcareAssistant.Domain.Entities;
 using AIHealthcareAssistant.Domain.Enums;
 using AIHealthcareAssistant.Infrastructure.Persistence;
@@ -21,9 +20,9 @@ public class DatabaseSeeder
         if (await _context.Users.AnyAsync())
             return;
 
-        var admin = CreateUser("admin@healthcare.com", "Admin@123", "Admin", "Admin", "Super", "Admin", UserRole.Admin);
-        var doctor = CreateUser("doctor@healthcare.com", "Doctor@123", "Doctor", "Doctor", "MD", "Doctor", UserRole.Doctor);
-        var patient = CreateUser("patient@healthcare.com", "Patient@123", "Patient", "Patient", "", "Patient", UserRole.Patient);
+        var admin = CreateUser("admin@healthcare.com", "Admin@123", "System", "Admin", "+10000000001", UserRole.Admin);
+        var doctor = CreateUser("doctor@healthcare.com", "Doctor@123", "Test", "Doctor", "+10000000002", UserRole.Doctor);
+        var patient = CreateUser("patient@healthcare.com", "Patient@123", "Test", "Patient", "+10000000003", UserRole.Patient);
 
         _context.Users.AddRange(admin, doctor, patient);
 
@@ -53,7 +52,7 @@ public class DatabaseSeeder
         await _context.SaveChangesAsync();
     }
 
-    private static User CreateUser(string email, string password, string firstName, string lastName, string phone, string roleName, UserRole role)
+    private static User CreateUser(string email, string password, string firstName, string lastName, string phone, UserRole role)
     {
         return new User
         {
