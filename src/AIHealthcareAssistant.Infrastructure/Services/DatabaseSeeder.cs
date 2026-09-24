@@ -18,13 +18,17 @@ public class DatabaseSeeder
     public async Task SeedAsync()
     {
         if (await _context.Users.AnyAsync())
+        {
+            await SeedSpecialtiesAsync();
             return;
+        }
 
         var admin = CreateUser("admin@healthcare.com", "Admin@123", "System", "Admin", "+10000000001", UserRole.Admin);
         var doctor = CreateUser("doctor@healthcare.com", "Doctor@123", "Test", "Doctor", "+10000000002", UserRole.Doctor);
         var patient = CreateUser("patient@healthcare.com", "Patient@123", "Test", "Patient", "+10000000003", UserRole.Patient);
 
         _context.Users.AddRange(admin, doctor, patient);
+        await _context.SaveChangesAsync();
 
         _context.Doctors.AddRange(new Doctor
         {
@@ -48,6 +52,42 @@ public class DatabaseSeeder
             AccessLevel = AdminAccessLevel.SuperAdmin,
             CreatedAt = DateTime.UtcNow
         });
+
+        await _context.SaveChangesAsync();
+        await SeedSpecialtiesAsync();
+    }
+
+    private async Task SeedSpecialtiesAsync()
+    {
+        if (await _context.Specialties.AnyAsync())
+            return;
+
+        var specialties = new[]
+        {
+            new Specialty { Id = Guid.NewGuid(), Name = "Cardiology", Description = "Heart and cardiovascular system", CreatedAt = DateTime.UtcNow },
+            new Specialty { Id = Guid.NewGuid(), Name = "Dermatology", Description = "Skin, hair, and nails", CreatedAt = DateTime.UtcNow },
+            new Specialty { Id = Guid.NewGuid(), Name = "Orthopedics", Description = "Musculoskeletal system", CreatedAt = DateTime.UtcNow },
+            new Specialty { Id = Guid.NewGuid(), Name = "Pediatrics", Description = "Children's health", CreatedAt = DateTime.UtcNow },
+            new Specialty { Id = Guid.NewGuid(), Name = "Neurology", Description = "Nervous system disorders", CreatedAt = DateTime.UtcNow },
+            new Specialty { Id = Guid.NewGuid(), Name = "Oncology", Description = "Cancer treatment", CreatedAt = DateTime.UtcNow },
+            new Specialty { Id = Guid.NewGuid(), Name = "Psychiatry", Description = "Mental health", CreatedAt = DateTime.UtcNow },
+            new Specialty { Id = Guid.NewGuid(), Name = "Radiology", Description = "Medical imaging", CreatedAt = DateTime.UtcNow }
+        };
+
+        _context.Specialties.AddRange(specialties);
+
+        var doctor = await _context.Doctors.FirstOrDefaultAsync();
+        if (doctor != null)
+        {
+            _context.DoctorSpecialties.AddRange(specialties.Select(s => new DoctorSpecialty
+            {
+                Id = Guid.NewGuid(),
+                DoctorId = doctor.Id,
+                SpecialtyId = s.Id,
+                IsPrimary = s.Name == "Cardiology",
+                CreatedAt = DateTime.UtcNow
+            }));
+        }
 
         await _context.SaveChangesAsync();
     }
