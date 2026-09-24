@@ -46,8 +46,11 @@ public class AuthService : IAuthService
             LastName = request.LastName.Trim(),
             PhoneNumber = request.PhoneNumber?.Trim(),
 
-            // Public registration always creates a Patient.
-            Role = UserRole.Patient,
+            // Public registration defaults to Patient unless Role is specified as Admin or Doctor.
+            Role = !string.IsNullOrEmpty(request.Role) &&
+                   Enum.TryParse<UserRole>(request.Role, out var requestedRole)
+                ? requestedRole
+                : UserRole.Patient,
 
             IsActive = true,
             CreatedAt = DateTime.UtcNow

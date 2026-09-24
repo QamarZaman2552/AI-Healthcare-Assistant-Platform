@@ -37,8 +37,8 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
 
         if (existing is null)
         {
-            await _dbSet.AddAsync(entity, cancellationToken);
-            return;
+            throw new KeyNotFoundException(
+                $"{typeof(T).Name} with id {entity.Id} not found.");
         }
 
         var trackedEntry = _context.Entry(existing);

@@ -2,6 +2,7 @@ using System.Net;
 using AIHealthcareAssistant.Application.Common.Response;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AIHealthcareAssistant.API.Middleware;
 
@@ -59,6 +60,10 @@ public ExceptionHandlingMiddleware(
             HttpRequestException =>
                 (HttpStatusCode.ServiceUnavailable,
                     "The requested service is currently unavailable."),
+
+            SecurityTokenException =>
+                (HttpStatusCode.Unauthorized,
+                    "Invalid or expired token."),
 
             _ =>
                 (HttpStatusCode.InternalServerError,

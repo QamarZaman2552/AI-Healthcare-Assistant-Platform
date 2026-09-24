@@ -27,4 +27,6 @@ public class RegisterRequest
     [Phone(ErrorMessage = "A valid phone number is required.")]
     [MaxLength(30)]
     public string? PhoneNumber { get; set; }
+
+    public string? Role { get; set; }
 }
