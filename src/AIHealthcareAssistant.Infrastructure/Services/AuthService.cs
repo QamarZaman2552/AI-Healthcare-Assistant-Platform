@@ -199,7 +199,7 @@ public class AuthService : IAuthService
                 actualHash,
                 expectedHash);
         }
-        catch (FormatException)
+        catch (Exception)
         {
             return false;
         }
