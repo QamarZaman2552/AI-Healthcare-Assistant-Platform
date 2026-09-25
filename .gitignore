@@ -58,3 +58,6 @@ TestResult.xml
 ## Local secrets
 LOCAL-SECRETS*
 secrets.json
+
+## Swagger screenshots (artifacts)
+Swagger Screenshot/
