@@ -80,6 +80,7 @@ public class PatientIntakesController : ControllerBase
     /// Creates a new patient intake.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Doctor,Admin")]
     [ProducesResponseType(typeof(ApiResponse<PatientIntakeResponse>), 201)]
     [ProducesResponseType(typeof(ApiErrorResponse), 400)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]

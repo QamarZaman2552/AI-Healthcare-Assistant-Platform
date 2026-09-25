@@ -8,6 +8,7 @@ namespace AIHealthcareAssistant.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SpecialitiesController : ControllerBase
 {
     private readonly ISpecialtyService _specialtyService;
@@ -21,6 +22,7 @@ public class SpecialitiesController : ControllerBase
     /// Gets all medical specialties.
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<List<SpecialtyResponse>>), 200)]
     public async Task<ActionResult<ApiResponse<List<SpecialtyResponse>>>> GetAll()
     {
@@ -35,6 +37,7 @@ public class SpecialitiesController : ControllerBase
     /// Gets a specialty by ID.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<SpecialtyResponse>), 200)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     public async Task<ActionResult<ApiResponse<SpecialtyResponse>>> GetById(Guid id)

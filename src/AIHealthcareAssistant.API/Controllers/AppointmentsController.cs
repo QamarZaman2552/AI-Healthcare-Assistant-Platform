@@ -152,6 +152,7 @@ public class AppointmentsController : ControllerBase
     /// Creates a new appointment.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Patient")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]

@@ -34,6 +34,7 @@ public class AiController : ControllerBase
     /// Sends a message to the AI healthcare assistant with automatic patient context.
     /// </summary>
     [HttpPost("chat")]
+    [Authorize(Roles = "Patient")]
     [ProducesResponseType(typeof(AIChatResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status408RequestTimeout)]
@@ -86,6 +87,7 @@ public class AiController : ControllerBase
     /// Performs an AI-powered symptom assessment.
     /// </summary>
     [HttpPost("symptom-check")]
+    [Authorize(Roles = "Patient")]
     [ProducesResponseType(typeof(AISymptomCheckResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status408RequestTimeout)]
@@ -137,6 +139,7 @@ public class AiController : ControllerBase
     /// Gets all conversations for the authenticated patient.
     /// </summary>
     [HttpGet("conversations/patient/{id:guid}")]
+    [Authorize(Roles = "Patient")]
     [ProducesResponseType(typeof(ApiResponse<List<ConversationResponse>>), 200)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
@@ -163,6 +166,7 @@ public class AiController : ControllerBase
     /// Gets a specific conversation with all messages.
     /// </summary>
     [HttpGet("conversations/{id:guid}")]
+    [Authorize(Roles = "Patient")]
     [ProducesResponseType(typeof(ApiResponse<ConversationDetailResponse>), 200)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
@@ -196,6 +200,7 @@ public class AiController : ControllerBase
     /// Creates a new conversation for a patient.
     /// </summary>
     [HttpPost("conversations")]
+    [Authorize(Roles = "Patient")]
     [ProducesResponseType(typeof(ApiResponse<ConversationResponse>), 201)]
     [ProducesResponseType(typeof(ApiErrorResponse), 400)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
