@@ -24,6 +24,8 @@ using (var scope = app.Services.CreateScope())
 
 app.UseExceptionHandling();
 
+app.UseCors("AllowFrontend");
+
 app.UseApi();
 
 app.UseHttpsRedirection();
