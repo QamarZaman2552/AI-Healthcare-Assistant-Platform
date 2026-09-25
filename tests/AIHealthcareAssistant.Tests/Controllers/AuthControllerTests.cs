@@ -57,6 +57,38 @@ public class AuthControllerTests
     }
 
     [Fact]
+    public async Task Register_WithAdminRole_ReturnsOk()
+    {
+        var request = new RegisterRequest
+        {
+            Email = "admin@test.com",
+            Password = "Test@1234",
+            FirstName = "Admin",
+            LastName = "User",
+            Role = "Admin"
+        };
+
+        var response = new AuthResponse
+        {
+            Token = "jwt-token",
+            Email = request.Email,
+            FullName = "Admin User",
+            Role = "Admin",
+            Expiration = DateTime.UtcNow.AddHours(1)
+        };
+
+        _authServiceMock
+            .Setup(x => x.RegisterAsync(request))
+            .ReturnsAsync(response);
+
+        var result = await _controller.Register(request);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var authResponse = Assert.IsType<ApiResponse<AuthResponse>>(okResult.Value);
+        Assert.Equal("Admin", authResponse.Data.Role);
+    }
+
+    [Fact]
     public async Task Register_DuplicateEmail_ReturnsConflictViaMiddleware()
     {
         var request = new RegisterRequest
@@ -139,5 +171,33 @@ public class AuthControllerTests
         using var reader = new StreamReader(httpContext.Response.Body);
         var body = await reader.ReadToEndAsync();
         Assert.Contains("Invalid credentials", body);
+    }
+
+
+    [Fact]
+    public async Task Login_InactiveAccount_ReturnsUnauthorizedViaMiddleware()
+    {
+        var request = new LoginRequest
+        {
+            Email = "inactive@test.com",
+            Password = "Test@1234"
+        };
+
+        _authServiceMock
+            .Setup(x => x.LoginAsync(request))
+            .ThrowsAsync(new UnauthorizedAccessException("This account is inactive."));
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+
+        await ExceptionHandlingMiddleware.HandleExceptionAsync(
+            httpContext, new UnauthorizedAccessException("This account is inactive."));
+
+        Assert.Equal((int)HttpStatusCode.Unauthorized, httpContext.Response.StatusCode);
+
+        httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(httpContext.Response.Body);
+        var body = await reader.ReadToEndAsync();
+        Assert.Contains("inactive", body);
     }
 }
