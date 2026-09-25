@@ -93,8 +93,17 @@ public static class DependencyInjection
             });
         });
 
-        services.Configure<AISettings>(
-    configuration.GetSection("AISettings"));
+        var aiSettings = configuration.GetSection("AISettings").Get<AISettings>()
+            ?? throw new InvalidOperationException("AISettings configuration section is missing.");
+
+        if (string.IsNullOrWhiteSpace(aiSettings.ApiKey))
+        {
+            throw new InvalidOperationException(
+                "AISettings:ApiKey is missing. Set it with: dotnet user-secrets set \"AISettings:ApiKey\" \"<your-gemini-api-key>\" " +
+                "--project src/AIHealthcareAssistant.API or via environment variable AISettings__ApiKey.");
+        }
+
+        services.Configure<AISettings>(configuration.GetSection("AISettings"));
 
         services.AddHttpClient<IAIService, AIService>(
             (provider, client) =>

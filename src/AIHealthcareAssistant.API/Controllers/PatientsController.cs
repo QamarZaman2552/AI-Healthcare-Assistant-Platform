@@ -154,7 +154,7 @@ public class PatientsController : ControllerBase
         [FromBody] PatientProfileRequest request)
     {
         if (!await CanAccessPatientAsync(id))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _patientService.CreateProfileAsync(id, request);
 
@@ -182,7 +182,7 @@ public class PatientsController : ControllerBase
         [FromBody] PatientProfileRequest request)
     {
         if (!await CanAccessPatientAsync(id))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _patientService.UpdateProfileAsync(id, request);
 

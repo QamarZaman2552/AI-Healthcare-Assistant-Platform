@@ -97,7 +97,7 @@ public class AppointmentsController : ControllerBase
                 ApiErrorResponse.Error("Appointment was not found."));
 
         if (!await CanAccessAppointmentAsync(result.PatientId, result.DoctorId))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         return Ok(
             ApiResponse<AppointmentResponse>.Ok(
@@ -116,7 +116,7 @@ public class AppointmentsController : ControllerBase
         Guid patientId)
     {
         if (!await CanAccessPatientAsync(patientId))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _appointmentService.GetByPatientAsync(patientId);
 
@@ -138,7 +138,7 @@ public class AppointmentsController : ControllerBase
         Guid doctorId)
     {
         if (!await CanAccessDoctorAsync(doctorId))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _appointmentService.GetByDoctorAsync(doctorId);
 
@@ -193,7 +193,7 @@ public class AppointmentsController : ControllerBase
                 ApiErrorResponse.Error("Appointment was not found."));
 
         if (!await CanAccessAppointmentAsync(appointment.PatientId, appointment.DoctorId))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _appointmentService.CancelAsync(
             id,
@@ -226,7 +226,7 @@ public class AppointmentsController : ControllerBase
                 ApiErrorResponse.Error("Appointment was not found."));
 
         if (!await CanAccessAppointmentAsync(appointment.PatientId, appointment.DoctorId))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _appointmentService.RescheduleAsync(
             id,
@@ -260,7 +260,7 @@ public class AppointmentsController : ControllerBase
                 ApiErrorResponse.Error("Appointment was not found."));
 
         if (!await CanAccessAppointmentAsync(appointment.PatientId, appointment.DoctorId))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _appointmentService.UpdateStatusAsync(
             id,
@@ -286,7 +286,7 @@ public class AppointmentsController : ControllerBase
         [FromQuery] DateTime? date)
     {
         if (!await CanAccessDoctorAsync(doctorId))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _appointmentService.GetDoctorDashboardAppointmentsAsync(doctorId, status, date);
 

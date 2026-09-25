@@ -279,7 +279,7 @@ public class DoctorsController : ControllerBase
     public async Task<ActionResult<ApiResponse<DoctorDashboardResponse>>> GetDashboardStats(Guid id)
     {
         if (!await CanAccessDoctorAsync(id))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         var result = await _doctorService.GetDashboardStatsAsync(id);
 
@@ -307,7 +307,7 @@ public class DoctorsController : ControllerBase
         [FromQuery] string date = "today")
     {
         if (!await CanAccessDoctorAsync(id))
-            return Forbid();
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
         DateOnly parsedDate;
 

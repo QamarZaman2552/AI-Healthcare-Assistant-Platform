@@ -50,7 +50,7 @@ public class AiController : ControllerBase
             request.PatientId = patientId;
 
             var result = await _aiService.ChatAsync(request, cancellationToken);
-            return Ok(result);
+            return Ok(ApiResponse<AIChatResponseDto>.Ok(result, "Chat response retrieved successfully."));
         }
         catch (ArgumentException ex)
         {
@@ -106,7 +106,7 @@ public class AiController : ControllerBase
                 request,
                 cancellationToken);
 
-            return Ok(result);
+            return Ok(ApiResponse<AISymptomCheckResponseDto>.Ok(result, "Symptom check completed."));
         }
         catch (ArgumentException ex)
         {

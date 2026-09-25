@@ -24,11 +24,11 @@ using (var scope = app.Services.CreateScope())
 
 app.UseExceptionHandling();
 
+app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors("AllowFrontend");
 
 app.UseApi();
-
-app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
