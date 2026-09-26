@@ -75,9 +75,9 @@ public class AiControllerTests
             It.IsAny<CancellationToken>()));
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var chatResponse = Assert.IsType<AIChatResponseDto>(okResult.Value);
-        Assert.NotNull(chatResponse);
-        Assert.Equal(response.Message, chatResponse.Message);
+        var apiResponse = Assert.IsType<ApiResponse<AIChatResponseDto>>(okResult.Value);
+        Assert.NotNull(apiResponse.Data);
+        Assert.Equal(response.Message, apiResponse.Data.Message);
     }
 
     [Fact]
@@ -205,9 +205,9 @@ public class AiControllerTests
             It.IsAny<CancellationToken>()));
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var symptomResponse = Assert.IsType<AISymptomCheckResponseDto>(okResult.Value);
-        Assert.NotNull(symptomResponse);
-        Assert.Equal("Mild symptoms detected", symptomResponse.Summary);
+        var apiResponse = Assert.IsType<ApiResponse<AISymptomCheckResponseDto>>(okResult.Value);
+        Assert.NotNull(apiResponse.Data);
+        Assert.Equal("Mild symptoms detected", apiResponse.Data.Summary);
     }
 
     [Fact]
