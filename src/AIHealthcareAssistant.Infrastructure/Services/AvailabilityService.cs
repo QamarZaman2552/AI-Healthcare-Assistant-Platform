@@ -14,32 +14,55 @@ public class AvailabilityService : IAvailabilityService
         _context = context;
     }
 
-    public async Task<AvailabilityResponse> CreateAsync(CreateAvailabilityRequest request)
+    // =========================================================
+    // CREATE
+    // =========================================================
+
+    public async Task<AvailabilityResponse> CreateAsync(
+        CreateAvailabilityRequest request)
     {
+        // Check doctor exists
         var doctor = await _context.Doctors
-       .Include(d => d.User)
-       .FirstOrDefaultAsync(d => d.Id == request.DoctorId);  
+            .Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.Id == request.DoctorId);
 
         if (doctor == null)
             throw new KeyNotFoundException("Doctor not found");
 
+        // Validate time range
         if (request.EndTime <= request.StartTime)
-            throw new ArgumentException("End time must be after start time");
+            throw new ArgumentException(
+                "End time must be after start time");
 
+        // Validate slot duration
         if (request.SlotDurationMinutes <= 0)
-            throw new ArgumentException("Slot duration must be greater than 0");
+            throw new ArgumentException(
+                "Slot duration must be greater than 0");
 
+        // Check overlapping active availability
         var existing = await _context.DoctorAvailabilities
-            .FirstOrDefaultAsync(a => a.DoctorId == request.DoctorId
+            .FirstOrDefaultAsync(a =>
+                a.DoctorId == request.DoctorId
                 && a.DayOfWeek == request.DayOfWeek
                 && a.IsActive
                 && a.StartTime < request.EndTime
                 && a.EndTime > request.StartTime
-                && (!a.EffectiveFrom.HasValue || !request.EffectiveTo.HasValue || a.EffectiveFrom.Value <= request.EffectiveTo.Value)
-                && (!request.EffectiveFrom.HasValue || !a.EffectiveTo.HasValue || request.EffectiveFrom.Value <= a.EffectiveTo.Value));
+
+                // Effective date overlap
+                && (
+                    !a.EffectiveFrom.HasValue
+                    || !request.EffectiveTo.HasValue
+                    || a.EffectiveFrom.Value <= request.EffectiveTo.Value
+                )
+                && (
+                    !request.EffectiveFrom.HasValue
+                    || !a.EffectiveTo.HasValue
+                    || request.EffectiveFrom.Value <= a.EffectiveTo.Value
+                ));
 
         if (existing != null)
-            throw new InvalidOperationException("Availability overlaps with existing schedule");
+            throw new InvalidOperationException(
+                "Availability overlaps with existing schedule");
 
         var availability = new DoctorAvailability
         {
@@ -55,14 +78,21 @@ public class AvailabilityService : IAvailabilityService
         };
 
         _context.DoctorAvailabilities.Add(availability);
+
         await _context.SaveChangesAsync();
 
-        return MapToResponse(availability, doctor);
+        return MapToResponse(
+            availability,
+            doctor);
     }
 
+    // =========================================================
+    // UPDATE
+    // =========================================================
+
     public async Task<AvailabilityResponse> UpdateAsync(
-     Guid id,
-     UpdateAvailabilityRequest request)
+        Guid id,
+        UpdateAvailabilityRequest request)
     {
         var availability = await _context.DoctorAvailabilities
             .Include(a => a.Doctor)
@@ -70,34 +100,53 @@ public class AvailabilityService : IAvailabilityService
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (availability == null)
-            throw new KeyNotFoundException("Availability not found");
+            throw new KeyNotFoundException(
+                "Availability not found");
 
+        // Validate time range
         if (request.EndTime <= request.StartTime)
-            throw new ArgumentException("End time must be after start time");
+            throw new ArgumentException(
+                "End time must be after start time");
 
+        // Validate slot duration
         if (request.SlotDurationMinutes <= 0)
-            throw new ArgumentException("Slot duration must be greater than 0");
+            throw new ArgumentException(
+                "Slot duration must be greater than 0");
 
+        // Check overlapping active availability
         if (request.IsActive)
         {
             var existing = await _context.DoctorAvailabilities
-                .FirstOrDefaultAsync(a => a.DoctorId == availability.DoctorId
+                .FirstOrDefaultAsync(a =>
+                    a.DoctorId == availability.DoctorId
                     && a.Id != id
                     && a.DayOfWeek == request.DayOfWeek
                     && a.IsActive
                     && a.StartTime < request.EndTime
                     && a.EndTime > request.StartTime
-                    && (!a.EffectiveFrom.HasValue || !request.EffectiveTo.HasValue || a.EffectiveFrom.Value <= request.EffectiveTo.Value)
-                    && (!request.EffectiveFrom.HasValue || !a.EffectiveTo.HasValue || request.EffectiveFrom.Value <= a.EffectiveTo.Value));
+
+                    // Effective date overlap
+                    && (
+                        !a.EffectiveFrom.HasValue
+                        || !request.EffectiveTo.HasValue
+                        || a.EffectiveFrom.Value <= request.EffectiveTo.Value
+                    )
+                    && (
+                        !request.EffectiveFrom.HasValue
+                        || !a.EffectiveTo.HasValue
+                        || request.EffectiveFrom.Value <= a.EffectiveTo.Value
+                    ));
 
             if (existing != null)
-                throw new InvalidOperationException("Availability overlaps with existing schedule");
+                throw new InvalidOperationException(
+                    "Availability overlaps with existing schedule");
         }
 
         availability.DayOfWeek = request.DayOfWeek;
         availability.StartTime = request.StartTime;
         availability.EndTime = request.EndTime;
-        availability.SlotDurationMinutes = request.SlotDurationMinutes;
+        availability.SlotDurationMinutes =
+            request.SlotDurationMinutes;
         availability.IsActive = request.IsActive;
         availability.EffectiveFrom = request.EffectiveFrom;
         availability.EffectiveTo = request.EffectiveTo;
@@ -109,7 +158,12 @@ public class AvailabilityService : IAvailabilityService
             availability.Doctor);
     }
 
-    public async Task<AvailabilityResponse?> GetByIdAsync(Guid id)
+    // =========================================================
+    // GET BY ID
+    // =========================================================
+
+    public async Task<AvailabilityResponse?> GetByIdAsync(
+        Guid id)
     {
         var availability = await _context.DoctorAvailabilities
             .Include(a => a.Doctor)
@@ -119,58 +173,129 @@ public class AvailabilityService : IAvailabilityService
         if (availability == null)
             return null;
 
-        return MapToResponse(availability, availability.Doctor);
+        return MapToResponse(
+            availability,
+            availability.Doctor);
     }
 
-    public async Task<List<AvailabilityResponse>> GetByDoctorAsync(Guid doctorId)
+    // =========================================================
+    // GET BY DOCTOR
+    // =========================================================
+
+    public async Task<List<AvailabilityResponse>> GetByDoctorAsync(
+        Guid doctorId)
     {
+        // IMPORTANT:
+        // Validate doctor before searching availability.
+        var doctor = await _context.Doctors
+            .Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.Id == doctorId);
+
+        if (doctor == null)
+            throw new KeyNotFoundException(
+                "Doctor not found");
+
         var availabilities = await _context.DoctorAvailabilities
             .Include(a => a.Doctor)
             .ThenInclude(d => d.User)
-            .Where(a => a.DoctorId == doctorId && a.IsActive)
+            .Where(a =>
+                a.DoctorId == doctorId
+                && a.IsActive)
             .OrderBy(a => a.DayOfWeek)
             .ThenBy(a => a.StartTime)
             .ToListAsync();
 
-        return availabilities.Select(a => MapToResponse(a, a.Doctor)).ToList();
+        return availabilities
+            .Select(a => MapToResponse(
+                a,
+                a.Doctor))
+            .ToList();
     }
 
-    public async Task<List<AvailabilityResponse>> GetByDoctorAndDayAsync(Guid doctorId, DayOfWeek dayOfWeek)
+    // =========================================================
+    // GET BY DOCTOR AND DAY
+    // =========================================================
+
+    public async Task<List<AvailabilityResponse>> GetByDoctorAndDayAsync(
+        Guid doctorId,
+        DayOfWeek dayOfWeek)
     {
+        // Validate doctor first.
+        var doctorExists = await _context.Doctors
+            .AnyAsync(d => d.Id == doctorId);
+
+        if (!doctorExists)
+            throw new KeyNotFoundException(
+                "Doctor not found");
+
         var availabilities = await _context.DoctorAvailabilities
             .Include(a => a.Doctor)
             .ThenInclude(d => d.User)
-            .Where(a => a.DoctorId == doctorId
+            .Where(a =>
+                a.DoctorId == doctorId
                 && a.DayOfWeek == dayOfWeek
                 && a.IsActive)
             .OrderBy(a => a.StartTime)
             .ToListAsync();
 
-        return availabilities.Select(a => MapToResponse(a, a.Doctor)).ToList();
+        return availabilities
+            .Select(a => MapToResponse(
+                a,
+                a.Doctor))
+            .ToList();
     }
 
-    public async Task<List<TimeSlotResponse>> GetAvailableSlotsAsync(Guid doctorId, DateOnly date)
+    // =========================================================
+    // GET AVAILABLE SLOTS
+    // =========================================================
+
+    public async Task<List<TimeSlotResponse>> GetAvailableSlotsAsync(
+        Guid doctorId,
+        DateOnly date)
     {
+        // Validate doctor first.
+        var doctorExists = await _context.Doctors
+            .AnyAsync(d => d.Id == doctorId);
+
+        if (!doctorExists)
+            throw new KeyNotFoundException(
+                "Doctor not found");
+
         var dayOfWeek = date.DayOfWeek;
 
         var availabilities = await _context.DoctorAvailabilities
-            .Where(a => a.DoctorId == doctorId
+            .Where(a =>
+                a.DoctorId == doctorId
                 && a.DayOfWeek == dayOfWeek
                 && a.IsActive
-                && (a.EffectiveFrom == null || a.EffectiveFrom <= date)
-                && (a.EffectiveTo == null || a.EffectiveTo >= date))
+                && (
+                    a.EffectiveFrom == null
+                    || a.EffectiveFrom <= date
+                )
+                && (
+                    a.EffectiveTo == null
+                    || a.EffectiveTo >= date
+                ))
             .ToListAsync();
 
-        var startOfDay = date.ToDateTime(TimeOnly.MinValue);
-        var endOfDay = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var startOfDay =
+            date.ToDateTime(TimeOnly.MinValue);
 
+        var endOfDay =
+            date.AddDays(1)
+                .ToDateTime(TimeOnly.MinValue);
+
+        // Find Cancelled status.
         var cancelledStatus = await _context.AppointmentStatuses
             .FirstOrDefaultAsync(s => s.Name == "Cancelled");
 
-        var cancelledStatusId = cancelledStatus?.Id ?? Guid.Empty;
+        var cancelledStatusId =
+            cancelledStatus?.Id ?? Guid.Empty;
 
+        // Get booked appointments.
         var bookedAppointments = await _context.Appointments
-            .Where(a => a.DoctorId == doctorId
+            .Where(a =>
+                a.DoctorId == doctorId
                 && a.ScheduledStart >= startOfDay
                 && a.ScheduledStart < endOfDay
                 && a.AppointmentStatusId != cancelledStatusId)
@@ -181,16 +306,24 @@ public class AvailabilityService : IAvailabilityService
         foreach (var availability in availabilities)
         {
             var current = availability.StartTime;
+
             while (true)
             {
-                var slotEnd = current.AddMinutes(availability.SlotDurationMinutes);
+                var slotEnd =
+                    current.AddMinutes(
+                        availability.SlotDurationMinutes);
 
-                if (slotEnd <= current || slotEnd > availability.EndTime)
+                // Safety check.
+                if (slotEnd <= current)
+                    break;
+
+                // Slot must stay within availability.
+                if (slotEnd > availability.EndTime)
                     break;
 
                 var isBooked = bookedAppointments.Any(a =>
-                    TimeOnly.FromDateTime(a.ScheduledStart) < slotEnd &&
-                    TimeOnly.FromDateTime(a.ScheduledEnd) > current);
+                    TimeOnly.FromDateTime(a.ScheduledStart) < slotEnd
+                    && TimeOnly.FromDateTime(a.ScheduledEnd) > current);
 
                 slots.Add(new TimeSlotResponse
                 {
@@ -203,33 +336,60 @@ public class AvailabilityService : IAvailabilityService
             }
         }
 
-        return slots.OrderBy(s => s.StartTime).ToList();
+        return slots
+            .OrderBy(s => s.StartTime)
+            .ToList();
     }
+
+    // =========================================================
+    // DELETE
+    // =========================================================
 
     public async Task DeleteAsync(Guid id)
     {
-        var availability = await _context.DoctorAvailabilities.FindAsync(id);
-        if (availability == null)
-            throw new KeyNotFoundException("Availability not found");
+        var availability =
+            await _context.DoctorAvailabilities
+                .FindAsync(id);
 
-        _context.DoctorAvailabilities.Remove(availability);
+        if (availability == null)
+            throw new KeyNotFoundException(
+                "Availability not found");
+
+        _context.DoctorAvailabilities.Remove(
+            availability);
+
         await _context.SaveChangesAsync();
     }
 
-    private static AvailabilityResponse MapToResponse(DoctorAvailability availability, Doctor doctor)
+    // =========================================================
+    // MAPPER
+    // =========================================================
+
+    private static AvailabilityResponse MapToResponse(
+        DoctorAvailability availability,
+        Doctor doctor)
     {
         return new AvailabilityResponse
         {
             Id = availability.Id,
             DoctorId = availability.DoctorId,
-            DoctorName = $"{doctor.User.FirstName} {doctor.User.LastName}",
+
+            DoctorName =
+                $"{doctor.User.FirstName} {doctor.User.LastName}",
+
             DayOfWeek = availability.DayOfWeek,
             StartTime = availability.StartTime,
             EndTime = availability.EndTime,
-            SlotDurationMinutes = availability.SlotDurationMinutes,
+            SlotDurationMinutes =
+                availability.SlotDurationMinutes,
+
             IsActive = availability.IsActive,
-            EffectiveFrom = availability.EffectiveFrom,
-            EffectiveTo = availability.EffectiveTo
+
+            EffectiveFrom =
+                availability.EffectiveFrom,
+
+            EffectiveTo =
+                availability.EffectiveTo
         };
     }
 }

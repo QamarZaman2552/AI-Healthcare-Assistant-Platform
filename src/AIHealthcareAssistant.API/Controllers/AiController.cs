@@ -39,6 +39,7 @@ public class AiController : ControllerBase
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status408RequestTimeout)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status503ServiceUnavailable)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status500InternalServerError)]
+    [Authorize(Roles ="Patient")]
     public async Task<ActionResult<AIChatResponseDto>> Chat(
         [FromBody] AIChatRequestDto request,
         CancellationToken cancellationToken)
