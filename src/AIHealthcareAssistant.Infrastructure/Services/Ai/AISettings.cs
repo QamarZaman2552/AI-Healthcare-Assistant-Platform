@@ -12,5 +12,5 @@ public class AISettings
 
     public string Model { get; set; } = string.Empty;
 
-    public int TimeoutSeconds { get; set; } = 30;
+    public int TimeoutSeconds { get; set; } = 60;
 }
