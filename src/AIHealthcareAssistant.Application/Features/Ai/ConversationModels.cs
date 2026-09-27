@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using AIHealthcareAssistant.Application.Common.Validation;
 
 namespace AIHealthcareAssistant.Application.Features.Ai;
 
@@ -15,7 +14,6 @@ public class ConversationResponse
 
 public class CreateConversationRequest
 {
-    [NotEmptyGuid(ErrorMessage = "PatientId is required.")]
     public Guid PatientId { get; set; }
     public Guid? AppointmentId { get; set; }
 

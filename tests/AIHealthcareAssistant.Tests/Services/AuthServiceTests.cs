@@ -64,7 +64,7 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task RegisterAsync_ValidAdmin_ReturnsAuthResponseWithAdminRole()
+    public async Task RegisterAsync_AdminRole_ThrowsArgumentException()
     {
         var request = new RegisterRequest
         {
@@ -75,14 +75,32 @@ public class AuthServiceTests
             Role = "Admin"
         };
 
-        var result = await _authService.RegisterAsync(request);
+        var ex = await Assert.ThrowsAsync<ArgumentException>(
+            () => _authService.RegisterAsync(request));
 
-        Assert.NotNull(result);
-        Assert.Equal("Admin", result.Role);
+        Assert.Contains("Admin accounts cannot be registered", ex.Message);
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == "admin@test.com");
-        Assert.NotNull(user);
-        Assert.Equal(UserRole.Admin, user.Role);
+        Assert.Null(user);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_LowercaseAdminRole_ThrowsArgumentException()
+    {
+        var request = new RegisterRequest
+        {
+            Email = "admin2@test.com",
+            Password = "Test@1234",
+            FirstName = "Test",
+            LastName = "Admin",
+            Role = "admin"
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _authService.RegisterAsync(request));
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == "admin2@test.com");
+        Assert.Null(user);
     }
 
     [Fact]

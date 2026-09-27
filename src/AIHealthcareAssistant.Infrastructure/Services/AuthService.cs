@@ -38,9 +38,16 @@ public class AuthService : IAuthService
         }
 
         var role = !string.IsNullOrEmpty(request.Role) &&
-                   Enum.TryParse<UserRole>(request.Role, out var requestedRole)
+                   Enum.TryParse<UserRole>(
+                       request.Role, ignoreCase: true, out var requestedRole)
             ? requestedRole
             : UserRole.Patient;
+
+        if (role == UserRole.Admin)
+        {
+            throw new ArgumentException(
+                "Admin accounts cannot be registered through public registration.");
+        }
 
         var user = new User
         {
@@ -51,7 +58,7 @@ public class AuthService : IAuthService
             LastName = request.LastName.Trim(),
             PhoneNumber = request.PhoneNumber?.Trim(),
 
-            // Public registration defaults to Patient unless Role is specified as Admin or Doctor.
+            // Public registration: Patient (default) or Doctor. Admin is rejected above.
             Role = role,
 
             IsActive = true,
@@ -149,6 +156,8 @@ public class AuthService : IAuthService
 
         return new AuthResponse
         {
+            UserId = user.Id,
+
             Token = new JwtSecurityTokenHandler()
                 .WriteToken(token),
 
