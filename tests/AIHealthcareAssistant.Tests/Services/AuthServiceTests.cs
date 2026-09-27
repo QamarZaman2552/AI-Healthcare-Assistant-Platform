@@ -201,6 +201,25 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task RegisterAsync_DoctorRole_DoesNotCreatePatientRecord()
+    {
+        var request = new RegisterRequest
+        {
+            Email = "doctor.nopatient@test.com",
+            Password = "Test@1234",
+            FirstName = "Test",
+            LastName = "Doctor",
+            Role = "Doctor"
+        };
+
+        await _authService.RegisterAsync(request);
+
+        var patient = await _context.Patients.FirstOrDefaultAsync(p =>
+            p.User.Email == "doctor.nopatient@test.com");
+        Assert.Null(patient);
+    }
+
+    [Fact]
     public async Task RegisterAsync_PasswordIsHashed()
     {
         var request = new RegisterRequest

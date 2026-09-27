@@ -4,8 +4,10 @@ using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Availability;
 using AIHealthcareAssistant.Application.Features.Doctors;
 using AIHealthcareAssistant.Application.Features.Specialties;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.Tests.Controllers;
 
@@ -22,6 +24,18 @@ public class AvailabilityControllerTests
         _controller = new AvailabilityController(
             _availabilityServiceMock.Object,
             _doctorServiceMock.Object);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+                    new Claim(ClaimTypes.Role, "Admin")
+                }, "TestAuth"))
+            }
+        };
     }
 
     [Fact]
@@ -153,12 +167,87 @@ public class AvailabilityControllerTests
         var id = Guid.NewGuid();
 
         _availabilityServiceMock
+            .Setup(x => x.GetByIdAsync(id))
+            .ReturnsAsync(new AvailabilityResponse { Id = id, DoctorId = Guid.NewGuid() });
+
+        _availabilityServiceMock
             .Setup(x => x.DeleteAsync(id))
             .Returns(Task.CompletedTask);
 
         var result = await _controller.Delete(id);
 
         Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task Create_DoctorRole_CreatingForAnotherDoctor_ReturnsForbidden()
+    {
+        var doctorUserId = Guid.NewGuid();
+        var ownDoctorId = Guid.NewGuid();
+        var otherDoctorId = Guid.NewGuid();
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, doctorUserId.ToString()),
+                    new Claim(ClaimTypes.Role, "Doctor")
+                }, "TestAuth"))
+            }
+        };
+
+        _doctorServiceMock
+            .Setup(x => x.GetByUserIdAsync(doctorUserId))
+            .ReturnsAsync(new DoctorResponse { Id = ownDoctorId, UserId = doctorUserId });
+
+        var request = new CreateAvailabilityRequest
+        {
+            DoctorId = otherDoctorId,
+            DayOfWeek = DayOfWeek.Monday,
+            StartTime = new TimeOnly(9, 0),
+            EndTime = new TimeOnly(17, 0),
+            SlotDurationMinutes = 30
+        };
+
+        var result = await _controller.Create(request);
+
+        var forbidden = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, forbidden.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_DoctorRole_DeletingAnotherDoctorsAvailability_ReturnsForbidden()
+    {
+        var doctorUserId = Guid.NewGuid();
+        var ownDoctorId = Guid.NewGuid();
+        var id = Guid.NewGuid();
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, doctorUserId.ToString()),
+                    new Claim(ClaimTypes.Role, "Doctor")
+                }, "TestAuth"))
+            }
+        };
+
+        _doctorServiceMock
+            .Setup(x => x.GetByUserIdAsync(doctorUserId))
+            .ReturnsAsync(new DoctorResponse { Id = ownDoctorId, UserId = doctorUserId });
+
+        _availabilityServiceMock
+            .Setup(x => x.GetByIdAsync(id))
+            .ReturnsAsync(new AvailabilityResponse { Id = id, DoctorId = Guid.NewGuid() });
+
+        var result = await _controller.Delete(id);
+
+        var forbidden = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, forbidden.StatusCode);
     }
 
     [Fact]

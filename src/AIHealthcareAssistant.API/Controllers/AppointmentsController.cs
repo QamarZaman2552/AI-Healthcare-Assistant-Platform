@@ -156,10 +156,14 @@ public class AppointmentsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ApiResponse<AppointmentResponse>>> Create(
         [FromBody] CreateAppointmentRequest request)
     {
+        if (!await CanAccessPatientAsync(request.PatientId))
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
+
         var result = await _appointmentService.CreateAsync(request);
 
         var response = ApiResponse<AppointmentResponse>.Ok(

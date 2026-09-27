@@ -37,6 +37,11 @@ public class AuthService : IAuthService
                 "An account with this email already exists.");
         }
 
+        var role = !string.IsNullOrEmpty(request.Role) &&
+                   Enum.TryParse<UserRole>(request.Role, out var requestedRole)
+            ? requestedRole
+            : UserRole.Patient;
+
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -47,10 +52,7 @@ public class AuthService : IAuthService
             PhoneNumber = request.PhoneNumber?.Trim(),
 
             // Public registration defaults to Patient unless Role is specified as Admin or Doctor.
-            Role = !string.IsNullOrEmpty(request.Role) &&
-                   Enum.TryParse<UserRole>(request.Role, out var requestedRole)
-                ? requestedRole
-                : UserRole.Patient,
+            Role = role,
 
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -58,12 +60,15 @@ public class AuthService : IAuthService
 
         _context.Users.Add(user);
 
-        _context.Patients.Add(new Patient
+        if (role == UserRole.Patient)
         {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            CreatedAt = DateTime.UtcNow
-        });
+            _context.Patients.Add(new Patient
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
 
         await _context.SaveChangesAsync();
 

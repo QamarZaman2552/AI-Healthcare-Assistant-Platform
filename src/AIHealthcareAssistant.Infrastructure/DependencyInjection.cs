@@ -12,6 +12,7 @@ using AIHealthcareAssistant.Infrastructure.Persistence;
 using AIHealthcareAssistant.Infrastructure.Services;
 using AIHealthcareAssistant.Infrastructure.Services.Ai;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -77,7 +78,37 @@ public static class DependencyInjection
                 IssuerSigningKey = new SymmetricSecurityKey(key)
             };
 
-           
+            options.Events = new JwtBearerEvents
+            {
+                OnChallenge = async context =>
+                {
+                    context.HandleResponse();
+
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+
+                    var message = string.IsNullOrEmpty(context.ErrorDescription)
+                        ? "You are not authenticated. Provide a valid JWT token."
+                        : context.ErrorDescription;
+
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        success = false,
+                        message,
+                        errors = Array.Empty<object>()
+                    });
+                },
+                OnForbidden = async context =>
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        success = false,
+                        message = "Access denied. You do not have permission to perform this action.",
+                        errors = Array.Empty<object>()
+                    });
+                }
+            };
         });
 
         services.AddAuthorization();

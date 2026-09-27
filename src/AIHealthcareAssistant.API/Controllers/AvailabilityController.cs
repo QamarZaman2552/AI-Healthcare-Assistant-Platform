@@ -4,6 +4,7 @@ using AIHealthcareAssistant.Application.Features.Availability;
 using AIHealthcareAssistant.Application.Features.Doctors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
@@ -23,19 +24,47 @@ public class AvailabilityController : ControllerBase
         _doctorService = doctorService;
     }
 
+    private async Task<bool> CanAccessDoctorAsync(Guid doctorId)
+    {
+        if (User.IsInRole("Admin"))
+            return true;
+
+        if (User.IsInRole("Doctor"))
+        {
+            var value = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(value) || !Guid.TryParse(value, out var userId))
+                return false;
+
+            var doctor = await _doctorService.GetByUserIdAsync(userId);
+            return doctor != null && doctor.Id == doctorId;
+        }
+
+        return false;
+    }
+
     /// <summary>
     /// Searches available doctors for a specialty on a specific date.
     /// </summary>
     [HttpGet("search")]
     [ProducesResponseType(typeof(ApiResponse<List<DoctorResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     public async Task<ActionResult<ApiResponse<List<DoctorResponse>>>> SearchAvailableDoctors(
-        [FromQuery] Guid specialtyId,
-        [FromQuery] DateOnly date)
+        [FromQuery] Guid? specialtyId,
+        [FromQuery] DateOnly? date)
     {
+        if (!specialtyId.HasValue || specialtyId.Value == Guid.Empty)
+            return BadRequest(ApiErrorResponse.Error(
+                "specialtyId query parameter is required."));
+
+        if (!date.HasValue)
+            return BadRequest(ApiErrorResponse.Error(
+                "date query parameter is required (yyyy-MM-dd)."));
+
         var doctors = await _doctorService.GetDoctorsAsync(new DoctorQuery
         {
-            SpecialtyId = specialtyId,
+            SpecialtyId = specialtyId.Value,
             AvailableOnly = true,
             Page = 1,
             PageSize = 50
@@ -44,7 +73,7 @@ public class AvailabilityController : ControllerBase
         var availableDoctors = new List<DoctorResponse>();
         foreach (var doctor in doctors.Items)
         {
-            var slots = await _availabilityService.GetAvailableSlotsAsync(doctor.Id, date);
+            var slots = await _availabilityService.GetAvailableSlotsAsync(doctor.Id, date.Value);
             if (slots.Any(s => s.IsAvailable))
             {
                 availableDoctors.Add(doctor);
@@ -143,6 +172,9 @@ public class AvailabilityController : ControllerBase
     public async Task<ActionResult<ApiResponse<AvailabilityResponse>>> Create(
         [FromBody] CreateAvailabilityRequest request)
     {
+        if (!await CanAccessDoctorAsync(request.DoctorId))
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
+
         var result = await _availabilityService.CreateAsync(request);
 
         var response = ApiResponse<AvailabilityResponse>.Ok(
@@ -170,6 +202,15 @@ public class AvailabilityController : ControllerBase
         Guid id,
         [FromBody] UpdateAvailabilityRequest request)
     {
+        var existing = await _availabilityService.GetByIdAsync(id);
+
+        if (existing == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Availability record was not found."));
+
+        if (!await CanAccessDoctorAsync(existing.DoctorId))
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
+
         var result = await _availabilityService.UpdateAsync(id, request);
 
         return Ok(ApiResponse<AvailabilityResponse>.Ok(
@@ -188,6 +229,15 @@ public class AvailabilityController : ControllerBase
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     public async Task<IActionResult> Delete(Guid id)
     {
+        var existing = await _availabilityService.GetByIdAsync(id);
+
+        if (existing == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Availability record was not found."));
+
+        if (!await CanAccessDoctorAsync(existing.DoctorId))
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
+
         await _availabilityService.DeleteAsync(id);
 
         return NoContent();
