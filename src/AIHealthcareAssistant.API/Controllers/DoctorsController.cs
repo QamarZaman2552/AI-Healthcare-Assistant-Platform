@@ -178,6 +178,9 @@ public class DoctorsController : ControllerBase
         Guid id,
         [FromBody] UpdateDoctorRequest request)
     {
+        if (!await CanAccessDoctorAsync(id))
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
+
         var result = await _doctorService.UpdateAsync(id, request);
 
         return Ok(ApiResponse<DoctorResponse>.Ok(
@@ -191,6 +194,7 @@ public class DoctorsController : ControllerBase
     [HttpPatch("{id:guid}/status")]
     [Authorize(Roles = "Doctor,Admin")]
     [ProducesResponseType(typeof(ApiResponse<DoctorResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     [ProducesResponseType(typeof(ApiErrorResponse), 403)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
@@ -198,9 +202,15 @@ public class DoctorsController : ControllerBase
         Guid id,
         [FromBody] UpdateDoctorStatusRequest request)
     {
+        if (!await CanAccessDoctorAsync(id))
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
+
+        if (request.IsActive is null)
+            return BadRequest(ApiErrorResponse.Error("IsActive is required."));
+
         var result = await _doctorService.UpdateStatusAsync(
             id,
-            request.IsActive);
+            request.IsActive.Value);
 
         return Ok(ApiResponse<DoctorResponse>.Ok(
             result,
@@ -213,6 +223,7 @@ public class DoctorsController : ControllerBase
     [HttpPatch("{id:guid}/verification")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ApiResponse<DoctorResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     [ProducesResponseType(typeof(ApiErrorResponse), 403)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
@@ -220,9 +231,12 @@ public class DoctorsController : ControllerBase
         Guid id,
         [FromBody] UpdateDoctorVerificationRequest request)
     {
+        if (request.IsVerified is null)
+            return BadRequest(ApiErrorResponse.Error("IsVerified is required."));
+
         var result = await _doctorService.UpdateVerificationAsync(
             id,
-            request.IsVerified);
+            request.IsVerified.Value);
 
         return Ok(ApiResponse<DoctorResponse>.Ok(
             result,
@@ -260,6 +274,9 @@ public class DoctorsController : ControllerBase
         Guid id,
         [FromBody] AssignSpecialtyRequest request)
     {
+        if (!await CanAccessDoctorAsync(id))
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
+
         var result = await _doctorService.AssignSpecialtyAsync(id, request);
 
         return Ok(ApiResponse<SpecialtyResponse>.Ok(
@@ -273,11 +290,16 @@ public class DoctorsController : ControllerBase
     [HttpGet("dashboard/stats")]
     [Authorize(Roles = "Doctor,Admin")]
     [ProducesResponseType(typeof(ApiResponse<DoctorDashboardResponse>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 400)]
     [ProducesResponseType(typeof(ApiErrorResponse), 403)]
     [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     public async Task<ActionResult<ApiResponse<DoctorDashboardResponse>>> GetDashboardStats(Guid id)
     {
+        if (id == Guid.Empty)
+            return BadRequest(ApiErrorResponse.Error(
+                "id query parameter is required."));
+
         if (!await CanAccessDoctorAsync(id))
             return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
 
@@ -368,6 +390,9 @@ public class DoctorsController : ControllerBase
         Guid id,
         Guid specialtyId)
     {
+        if (!await CanAccessDoctorAsync(id))
+            return StatusCode(403, ApiErrorResponse.Forbidden("Access denied."));
+
         await _doctorService.RemoveSpecialtyAsync(id, specialtyId);
 
         return NoContent();

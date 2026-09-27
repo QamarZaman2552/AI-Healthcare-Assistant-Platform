@@ -174,4 +174,134 @@ public class DoctorControllerTests
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
     }
+
+    private void SetupOwnDoctor(Guid ownDoctorId)
+    {
+        _doctorServiceMock
+            .Setup(x => x.GetByUserIdAsync(_userId))
+            .ReturnsAsync(new DoctorResponse { Id = ownDoctorId, UserId = _userId });
+    }
+
+    [Fact]
+    public async Task Update_OtherDoctorsRecord_ReturnsForbidden()
+    {
+        SetupOwnDoctor(Guid.NewGuid());
+        var otherDoctorId = Guid.NewGuid();
+
+        var result = await _controller.Update(otherDoctorId, new UpdateDoctorRequest { LicenseNumber = "LIC" });
+
+        var objResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, objResult.StatusCode);
+        _doctorServiceMock.Verify(
+            x => x.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateDoctorRequest>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Update_OwnDoctor_ReturnsOk()
+    {
+        var ownDoctorId = Guid.NewGuid();
+        SetupOwnDoctor(ownDoctorId);
+        _doctorServiceMock
+            .Setup(x => x.UpdateAsync(ownDoctorId, It.IsAny<UpdateDoctorRequest>()))
+            .ReturnsAsync(new DoctorResponse { Id = ownDoctorId, UserId = _userId });
+
+        var result = await _controller.Update(ownDoctorId, new UpdateDoctorRequest { LicenseNumber = "LIC" });
+
+        Assert.IsType<OkObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_OtherDoctorsRecord_ReturnsForbidden()
+    {
+        SetupOwnDoctor(Guid.NewGuid());
+        var otherDoctorId = Guid.NewGuid();
+
+        var result = await _controller.UpdateStatus(otherDoctorId, new UpdateDoctorStatusRequest { IsActive = true });
+
+        var objResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, objResult.StatusCode);
+        _doctorServiceMock.Verify(
+            x => x.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<bool>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_OwnDoctor_ReturnsOk()
+    {
+        var ownDoctorId = Guid.NewGuid();
+        SetupOwnDoctor(ownDoctorId);
+        _doctorServiceMock
+            .Setup(x => x.UpdateStatusAsync(ownDoctorId, true))
+            .ReturnsAsync(new DoctorResponse { Id = ownDoctorId, UserId = _userId });
+
+        var result = await _controller.UpdateStatus(ownDoctorId, new UpdateDoctorStatusRequest { IsActive = true });
+
+        Assert.IsType<OkObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_MissingIsActive_ReturnsBadRequest()
+    {
+        var ownDoctorId = Guid.NewGuid();
+        SetupOwnDoctor(ownDoctorId);
+
+        var result = await _controller.UpdateStatus(ownDoctorId, new UpdateDoctorStatusRequest { IsActive = null });
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+        _doctorServiceMock.Verify(
+            x => x.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<bool>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateVerification_MissingIsVerified_ReturnsBadRequest()
+    {
+        var result = await _controller.UpdateVerification(Guid.NewGuid(), new UpdateDoctorVerificationRequest { IsVerified = null });
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+        _doctorServiceMock.Verify(
+            x => x.UpdateVerificationAsync(It.IsAny<Guid>(), It.IsAny<bool>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task AssignSpecialty_OtherDoctorsRecord_ReturnsForbidden()
+    {
+        SetupOwnDoctor(Guid.NewGuid());
+        var otherDoctorId = Guid.NewGuid();
+
+        var result = await _controller.AssignSpecialty(
+            otherDoctorId,
+            new AssignSpecialtyRequest { SpecialtyId = Guid.NewGuid() });
+
+        var objResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, objResult.StatusCode);
+        _doctorServiceMock.Verify(
+            x => x.AssignSpecialtyAsync(It.IsAny<Guid>(), It.IsAny<AssignSpecialtyRequest>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveSpecialty_OtherDoctorsRecord_ReturnsForbidden()
+    {
+        SetupOwnDoctor(Guid.NewGuid());
+        var otherDoctorId = Guid.NewGuid();
+
+        var result = await _controller.RemoveSpecialty(otherDoctorId, Guid.NewGuid());
+
+        var objResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, objResult.StatusCode);
+        _doctorServiceMock.Verify(
+            x => x.RemoveSpecialtyAsync(It.IsAny<Guid>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetDashboardStats_MissingId_ReturnsBadRequest()
+    {
+        var result = await _controller.GetDashboardStats(Guid.Empty);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
 }

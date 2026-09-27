@@ -1,6 +1,9 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AIHealthcareAssistant.Application.Features.Doctors;
 
 public class UpdateDoctorStatusRequest
 {
-    public bool IsActive { get; set; }
+    [Required(ErrorMessage = "IsActive is required.")]
+    public bool? IsActive { get; set; }
 }

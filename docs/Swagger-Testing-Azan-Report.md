@@ -176,3 +176,21 @@ The comment on `CreateDoctorRequest` says "a bare Doctor row is created automati
 | D15 | PATCH `/api/Doctors/profile` â€” wrong-role-patient | patient | 403 | 403 | âœ… | `D15-03_PATCH_Doctors-profile_wrong-role-patient.png` |
 | D15 | PATCH `/api/Doctors/profile` â€” missing-license | doctor | 400 | 400 | âœ… | `D15-04_PATCH_Doctors-profile_missing-license.png` |
 | D15 | PATCH `/api/Doctors/profile` â€” not-found-admin-no-profile | admin | 404 | 404 | âœ… | `D15-05_PATCH_Doctors-profile_not-found-admin-no-profile.png` |
+
+---
+
+## Update — 27 September 2026 (Qamar, post-review)
+
+All findings verified on `develop` and fixed:
+
+| Finding | Status |
+|---|---|
+| BUG-1 (Doctor IDOR — 4 actions) | ? Fixed — `CanAccessDoctorAsync` ownership check added to `PUT /Doctors/{id}`, `PATCH {id}/status`, `POST {id}/specialties`, `DELETE {id}/specialties/{specialtyId}` (403 for another doctor, Admin/own unaffected) |
+| BUG-2 (empty body silently deactivates) | ? Fixed — `IsActive`/`IsVerified` are now `bool?` + `[Required]` ? `{}` returns **400** "Validation failed." |
+| BUG-3 (dashboard/stats missing id ? 403) | ? Fixed — missing `id` now returns **400** "id query parameter is required." |
+| OBS-3 (401/403 empty body) | ? Already fixed in `0f1ba3b` — `JwtBearerEvents.OnChallenge`/`OnForbidden` now return JSON `{success,message,errors}` |
+| OBS-4 (register `role: Admin`) | ? Already fixed in `c009984` — public register with `role: "Admin"`/`"admin"` ? **400**. The stale comment on `CreateDoctorRequest` (doctor row auto-created at registration) was corrected: registration creates only the User; `POST /api/Doctors` creates the Doctor row |
+
+OBS-1 (`by-status`/`user/{userId}` open to any logged-in role) and OBS-2 (`system-status` hard-codes `aiAvailable`) are left as-is — flagged to the team as design decisions.
+
+Verified live: 13/13 cases (4×403 IDOR blocks, 2×400 empty body, 1×400 missing id, 6 regressions) + unit tests 98/98.

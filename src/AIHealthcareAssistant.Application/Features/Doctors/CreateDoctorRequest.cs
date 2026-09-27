@@ -4,8 +4,9 @@ using AIHealthcareAssistant.Application.Common.Validation;
 namespace AIHealthcareAssistant.Application.Features.Doctors;
 
 /// <summary>
-/// Fills in the doctor profile for a user who already has the Doctor role
-/// (a bare Doctor row is created automatically at registration).
+/// Creates the doctor profile for a user who already has the Doctor role.
+/// Registration with role=Doctor only creates the User; this endpoint
+/// creates the Doctor row.
 /// </summary>
 public class CreateDoctorRequest
 {
