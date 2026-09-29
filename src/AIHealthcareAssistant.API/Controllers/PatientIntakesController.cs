@@ -1,8 +1,10 @@
 
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.PatientIntakes;
+using AIHealthcareAssistant.Application.Features.Patients;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AIHealthcareAssistant.API.Controllers;
 
@@ -12,10 +14,27 @@ namespace AIHealthcareAssistant.API.Controllers;
 public class PatientIntakesController : ControllerBase
 {
     private readonly IPatientIntakeService _patientIntakeService;
+    private readonly IPatientService _patientService;
 
-    public PatientIntakesController(IPatientIntakeService patientIntakeService)
+    public PatientIntakesController(
+        IPatientIntakeService patientIntakeService,
+        IPatientService patientService)
     {
         _patientIntakeService = patientIntakeService;
+        _patientService = patientService;
+    }
+
+    private async Task<bool> CanAccessPatientAsync(Guid patientId)
+    {
+        if (User.IsInRole("Admin") || User.IsInRole("Doctor"))
+            return true;
+
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            return false;
+
+        var patient = await _patientService.GetByUserIdAsync(userId);
+        return patient != null && patient.Id == patientId;
     }
 
     /// <summary>
@@ -33,6 +52,10 @@ public class PatientIntakesController : ControllerBase
             return NotFound(ApiErrorResponse.Error(
                 "Patient intake was not found."));
 
+        if (!await CanAccessPatientAsync(result.PatientId))
+            return NotFound(ApiErrorResponse.Error(
+                "Patient intake was not found."));
+
         return Ok(ApiResponse<PatientIntakeResponse>.Ok(
             result,
             "Patient intake retrieved successfully."));
@@ -43,10 +66,15 @@ public class PatientIntakesController : ControllerBase
     /// </summary>
     [HttpGet("patient/{patientId:guid}")]
     [ProducesResponseType(typeof(ApiResponse<List<PatientIntakeResponse>>), 200)]
+    [ProducesResponseType(typeof(ApiErrorResponse), 404)]
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     public async Task<ActionResult<ApiResponse<List<PatientIntakeResponse>>>> GetByPatient(
         Guid patientId)
     {
+        if (!await CanAccessPatientAsync(patientId))
+            return NotFound(ApiErrorResponse.Error(
+                "Patient intake records were not found."));
+
         var result = await _patientIntakeService.GetByPatientAsync(patientId);
 
         return Ok(ApiResponse<List<PatientIntakeResponse>>.Ok(
@@ -68,6 +96,10 @@ public class PatientIntakesController : ControllerBase
             appointmentId);
 
         if (result == null)
+            return NotFound(ApiErrorResponse.Error(
+                "Patient intake for the appointment was not found."));
+
+        if (!await CanAccessPatientAsync(result.PatientId))
             return NotFound(ApiErrorResponse.Error(
                 "Patient intake for the appointment was not found."));
 

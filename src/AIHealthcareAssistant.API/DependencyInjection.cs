@@ -4,6 +4,7 @@ using AIHealthcareAssistant.API.Middleware;
 using AIHealthcareAssistant.API.Services;
 using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Common.Response;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
 
@@ -88,10 +89,14 @@ public static class DependencyInjection
     public static IApplicationBuilder UseApi(
         this IApplicationBuilder app)
     {
-       
+        var env = app.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
 
-        app.UseSwagger();
-        app.UseSwaggerUI();
+        if (env.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
+
         app.UseRouting();
 
         return app;

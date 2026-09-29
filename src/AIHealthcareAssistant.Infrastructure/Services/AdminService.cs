@@ -1,3 +1,4 @@
+using AIHealthcareAssistant.Application.Common.Interfaces;
 using AIHealthcareAssistant.Application.Features.Admin;
 using AIHealthcareAssistant.Domain.Entities;
 using AIHealthcareAssistant.Infrastructure.Persistence;
@@ -8,10 +9,12 @@ namespace AIHealthcareAssistant.Infrastructure.Services;
 public class AdminService : IAdminService
 {
     private readonly AppDbContext _context;
+    private readonly IAIService _aiService;
 
-    public AdminService(AppDbContext context)
+    public AdminService(AppDbContext context, IAIService aiService)
     {
         _context = context;
+        _aiService = aiService;
     }
 
     public async Task<AdminDashboardResponse> GetDashboardAsync()
@@ -59,14 +62,24 @@ public class AdminService : IAdminService
     public async Task<SystemStatusResponse> GetSystemStatusAsync()
     {
         var databaseConnected = await _context.Database.CanConnectAsync();
-        var totalUsers = await _context.Users.CountAsync();
+        var activeUsers = await _context.Users.CountAsync(u => u.IsActive);
+
+        var aiAvailable = false;
+        try
+        {
+            aiAvailable = await _aiService.HealthCheckAsync();
+        }
+        catch
+        {
+            aiAvailable = false;
+        }
 
         return new SystemStatusResponse
         {
             Status = databaseConnected ? "operational" : "degraded",
             DatabaseConnected = databaseConnected,
-            AIAvailable = true,
-            ActiveConnections = totalUsers,
+            AIAvailable = aiAvailable,
+            ActiveConnections = activeUsers,
             LastChecked = DateTime.UtcNow
         };
     }

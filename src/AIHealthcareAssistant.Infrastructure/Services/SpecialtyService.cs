@@ -81,6 +81,10 @@ public class SpecialtyService : ISpecialtyService
         if (hasDoctors)
             throw new InvalidOperationException("Cannot delete specialty that is assigned to doctors");
 
+        var hasIntakes = await _context.PatientIntakes.AnyAsync(i => i.RecommendedSpecialtyId == id);
+        if (hasIntakes)
+            throw new InvalidOperationException("Cannot delete specialty that is referenced by patient intakes");
+
         _context.Specialties.Remove(specialty);
         await _context.SaveChangesAsync();
     }

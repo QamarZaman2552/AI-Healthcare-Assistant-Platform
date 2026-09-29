@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace AIHealthcareAssistant.Infrastructure.Services.Ai;
+﻿namespace AIHealthcareAssistant.Infrastructure.Services.Ai;
 
 public class AISettings
 {

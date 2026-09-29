@@ -1,6 +1,7 @@
 using AIHealthcareAssistant.API.Controllers;
 using AIHealthcareAssistant.Application.Common.Response;
 using AIHealthcareAssistant.Application.Features.Patients;
+using AIHealthcareAssistant.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -12,11 +13,38 @@ public class PatientsControllerTests
 {
     private readonly Mock<IPatientService> _patientServiceMock;
     private readonly PatientsController _controller;
+    private readonly Guid _userId;
+    private readonly Guid _patientId;
 
     public PatientsControllerTests()
     {
         _patientServiceMock = new Mock<IPatientService>();
         _controller = new PatientsController(_patientServiceMock.Object);
+        _userId = Guid.NewGuid();
+        _patientId = Guid.NewGuid();
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, _userId.ToString()),
+                    new Claim(ClaimTypes.Role, "Patient")
+                }, "TestAuth"))
+            }
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetByUserIdAsync(_userId))
+            .ReturnsAsync(new PatientResponse
+            {
+                Id = _patientId,
+                UserId = _userId,
+                FullName = "John Doe",
+                Email = "john@test.com",
+                CreatedAt = DateTime.UtcNow
+            });
     }
 
     [Fact]
@@ -49,21 +77,20 @@ public class PatientsControllerTests
     [Fact]
     public async Task GetById_ExistingPatient_ReturnsOk()
     {
-        var id = Guid.NewGuid();
         var patient = new PatientResponse
         {
-            Id = id,
-            UserId = Guid.NewGuid(),
+            Id = _patientId,
+            UserId = _userId,
             FullName = "John Doe",
             Email = "john@test.com",
             CreatedAt = DateTime.UtcNow
         };
 
         _patientServiceMock
-            .Setup(x => x.GetByIdAsync(id))
+            .Setup(x => x.GetByIdAsync(_patientId))
             .ReturnsAsync(patient);
 
-        var result = await _controller.GetById(id);
+        var result = await _controller.GetById(_patientId);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<PatientResponse>>(okResult.Value);
@@ -85,12 +112,144 @@ public class PatientsControllerTests
     }
 
     [Fact]
+    public async Task GetById_OtherPatient_ReturnsNotFound()
+    {
+        var otherPatientId = Guid.NewGuid();
+        var otherPatient = new PatientResponse
+        {
+            Id = otherPatientId,
+            UserId = Guid.NewGuid(),
+            FullName = "Jane Doe",
+            Email = "jane@test.com",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetByIdAsync(otherPatientId))
+            .ReturnsAsync(otherPatient);
+
+        var result = await _controller.GetById(otherPatientId);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetByUserId_ExistingPatient_ReturnsOk()
+    {
+        var patient = new PatientResponse
+        {
+            Id = _patientId,
+            UserId = _userId,
+            FullName = "John Doe",
+            Email = "john@test.com",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetByUserIdAsync(_userId))
+            .ReturnsAsync(patient);
+
+        var result = await _controller.GetByUserId(_userId);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<PatientResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
+    }
+
+    [Fact]
+    public async Task GetByUserId_OtherPatient_ReturnsNotFound()
+    {
+        var otherUserId = Guid.NewGuid();
+        var otherPatient = new PatientResponse
+        {
+            Id = Guid.NewGuid(),
+            UserId = otherUserId,
+            FullName = "Jane Doe",
+            Email = "jane@test.com",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetByUserIdAsync(otherUserId))
+            .ReturnsAsync(otherPatient);
+
+        var result = await _controller.GetByUserId(otherUserId);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetByUserId_NonExistingPatient_ReturnsNotFound()
+    {
+        var unknownUserId = Guid.NewGuid();
+
+        _patientServiceMock
+            .Setup(x => x.GetByUserIdAsync(unknownUserId))
+            .ReturnsAsync((PatientResponse?)null);
+
+        var result = await _controller.GetByUserId(unknownUserId);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetProfile_Existing_ReturnsOk()
+    {
+        var profile = new PatientProfileResponse
+        {
+            DateOfBirth = new DateOnly(1990, 5, 14),
+            Gender = Gender.Male,
+            City = "Lahore"
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetProfileAsync(_patientId))
+            .ReturnsAsync(profile);
+
+        var result = await _controller.GetProfile(_patientId);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<PatientProfileResponse>>(okResult.Value);
+        Assert.NotNull(response.Data);
+    }
+
+    [Fact]
+    public async Task GetProfile_NoProfile_ReturnsNotFound()
+    {
+        _patientServiceMock
+            .Setup(x => x.GetProfileAsync(_patientId))
+            .ReturnsAsync((PatientProfileResponse?)null);
+
+        var result = await _controller.GetProfile(_patientId);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetProfile_OtherPatient_ReturnsNotFound()
+    {
+        var otherPatientId = Guid.NewGuid();
+        var profile = new PatientProfileResponse
+        {
+            DateOfBirth = new DateOnly(1992, 1, 1),
+            Gender = Gender.Female
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetProfileAsync(otherPatientId))
+            .ReturnsAsync(profile);
+
+        var result = await _controller.GetProfile(otherPatientId);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
     public async Task GetHistory_ExistingPatient_ReturnsOk()
     {
-        var id = Guid.NewGuid();
         var history = new PatientHistoryResponse
         {
-            PatientId = id,
+            PatientId = _patientId,
             FullName = "John Doe",
             Email = "john@test.com",
             Appointments = new List<Application.Features.Appointments.AppointmentResponse>(),
@@ -100,10 +259,10 @@ public class PatientsControllerTests
         };
 
         _patientServiceMock
-            .Setup(x => x.GetHistoryAsync(id))
+            .Setup(x => x.GetHistoryAsync(_patientId))
             .ReturnsAsync(history);
 
-        var result = await _controller.GetHistory(id);
+        var result = await _controller.GetHistory(_patientId);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<PatientHistoryResponse>>(okResult.Value);
@@ -125,31 +284,43 @@ public class PatientsControllerTests
     }
 
     [Fact]
+    public async Task GetHistory_OtherPatient_ReturnsNotFound()
+    {
+        var otherPatientId = Guid.NewGuid();
+        var history = new PatientHistoryResponse
+        {
+            PatientId = otherPatientId,
+            FullName = "Jane Doe",
+            Email = "jane@test.com",
+            Appointments = new List<Application.Features.Appointments.AppointmentResponse>(),
+            TotalAppointments = 0,
+            CompletedAppointments = 0,
+            CancelledAppointments = 0
+        };
+
+        _patientServiceMock
+            .Setup(x => x.GetHistoryAsync(otherPatientId))
+            .ReturnsAsync(history);
+
+        var result = await _controller.GetHistory(otherPatientId);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
     public async Task Register_ValidUser_ReturnsCreated()
     {
-        var userId = Guid.NewGuid();
         var patient = new PatientResponse
         {
-            Id = Guid.NewGuid(),
-            UserId = userId,
+            Id = _patientId,
+            UserId = _userId,
             FullName = "John Doe",
             Email = "john@test.com"
         };
 
         _patientServiceMock
-            .Setup(x => x.RegisterAsync(userId))
+            .Setup(x => x.RegisterAsync(_userId))
             .ReturnsAsync(patient);
-
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, userId.ToString())
-                }))
-            }
-        };
 
         var result = await _controller.Register();
 
@@ -161,7 +332,6 @@ public class PatientsControllerTests
     [Fact]
     public async Task GetDashboardStats_ExistingPatient_ReturnsOk()
     {
-        var id = Guid.NewGuid();
         var dashboard = new PatientDashboardResponse
         {
             TotalAppointments = 5,
@@ -180,10 +350,10 @@ public class PatientsControllerTests
         };
 
         _patientServiceMock
-            .Setup(x => x.GetDashboardStatsAsync(id))
+            .Setup(x => x.GetDashboardStatsAsync(_patientId))
             .ReturnsAsync(dashboard);
 
-        var result = await _controller.GetDashboardStats(id);
+        var result = await _controller.GetDashboardStats(_patientId);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ApiResponse<PatientDashboardResponse>>(okResult.Value);
@@ -202,6 +372,16 @@ public class PatientsControllerTests
             .ReturnsAsync((PatientDashboardResponse?)null);
 
         var result = await _controller.GetDashboardStats(id);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetDashboardStats_OtherPatient_ReturnsNotFound()
+    {
+        var otherPatientId = Guid.NewGuid();
+
+        var result = await _controller.GetDashboardStats(otherPatientId);
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
     }

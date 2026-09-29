@@ -94,6 +94,10 @@ public class PatientsController : ControllerBase
             return NotFound(ApiErrorResponse.Error(
                 "Patient was not found."));
 
+        if (!await CanAccessPatientAsync(id))
+            return NotFound(ApiErrorResponse.Error(
+                "Patient was not found."));
+
         return Ok(ApiResponse<PatientResponse>.Ok(
             result,
             "Patient retrieved successfully."));
@@ -114,6 +118,10 @@ public class PatientsController : ControllerBase
             return NotFound(ApiErrorResponse.Error(
                 "Patient was not found for the specified user."));
 
+        if (!await CanAccessPatientAsync(result.Id))
+            return NotFound(ApiErrorResponse.Error(
+                "Patient was not found for the specified user."));
+
         return Ok(ApiResponse<PatientResponse>.Ok(
             result,
             "Patient retrieved successfully."));
@@ -128,6 +136,10 @@ public class PatientsController : ControllerBase
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     public async Task<ActionResult<ApiResponse<PatientProfileResponse>>> GetProfile(Guid id)
     {
+        if (!await CanAccessPatientAsync(id))
+            return NotFound(ApiErrorResponse.Error(
+                "Patient profile was not found."));
+
         var result = await _patientService.GetProfileAsync(id);
 
         if (result == null)
@@ -200,6 +212,10 @@ public class PatientsController : ControllerBase
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     public async Task<ActionResult<ApiResponse<PatientDashboardResponse>>> GetDashboardStats(Guid id)
     {
+        if (!await CanAccessPatientAsync(id))
+            return NotFound(ApiErrorResponse.Error(
+                "Patient dashboard stats were not found."));
+
         var result = await _patientService.GetDashboardStatsAsync(id);
 
         if (result == null)
@@ -220,6 +236,10 @@ public class PatientsController : ControllerBase
     [ProducesResponseType(typeof(ApiErrorResponse), 401)]
     public async Task<ActionResult<ApiResponse<PatientHistoryResponse>>> GetHistory(Guid id)
     {
+        if (!await CanAccessPatientAsync(id))
+            return NotFound(ApiErrorResponse.Error(
+                "Patient was not found."));
+
         var result = await _patientService.GetHistoryAsync(id);
 
         if (result == null)

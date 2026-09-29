@@ -28,8 +28,6 @@ public class AiController : ControllerBase
         _logger = logger;
     }
 
-    private bool IsAdmin() => User.IsInRole("Admin");
-
     /// <summary>
     /// Sends a message to the AI healthcare assistant with automatic patient context.
     /// </summary>
@@ -147,13 +145,10 @@ public class AiController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        if (!IsAdmin())
-        {
-            var patient = await GetAuthenticatedPatientAsync();
+        var patient = await GetAuthenticatedPatientAsync();
 
-            if (patient.Id != id)
-                return NotFound(ApiErrorResponse.Error("Conversations were not found."));
-        }
+        if (patient.Id != id)
+            return NotFound(ApiErrorResponse.Error("Conversations were not found."));
 
         var result = await _aiService.GetConversationsByPatientAsync(id, cancellationToken);
 
@@ -178,13 +173,10 @@ public class AiController : ControllerBase
         {
             var result = await _aiService.GetConversationByIdAsync(id, cancellationToken);
 
-            if (!IsAdmin())
-            {
-                var patient = await GetAuthenticatedPatientAsync();
+            var patient = await GetAuthenticatedPatientAsync();
 
-                if (result.PatientId != patient.Id)
-                    return NotFound(ApiErrorResponse.Error("Conversation was not found."));
-            }
+            if (result.PatientId != patient.Id)
+                return NotFound(ApiErrorResponse.Error("Conversation was not found."));
 
             return Ok(ApiResponse<ConversationDetailResponse>.Ok(
                 result,
@@ -211,15 +203,8 @@ public class AiController : ControllerBase
     {
         try
         {
-            if (!IsAdmin())
-            {
-                var patient = await GetAuthenticatedPatientAsync();
-                request.PatientId = patient.Id;
-            }
-            else if (request.PatientId == Guid.Empty)
-            {
-                return BadRequest(ApiErrorResponse.Error("PatientId is required."));
-            }
+            var patient = await GetAuthenticatedPatientAsync();
+            request.PatientId = patient.Id;
 
             var result = await _aiService.CreateConversationAsync(request, cancellationToken);
 
